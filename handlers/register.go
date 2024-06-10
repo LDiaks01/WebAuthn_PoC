@@ -1,0 +1,161 @@
+package handlers
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"webauthn-example/datas"
+
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
+)
+
+var (
+	webAuthn *webauthn.WebAuthn
+	err      error
+)
+
+var Challenge_hardened string
+var userHardened string
+
+var user = DefaultUser{
+
+	ID:          []byte("Lansana"),
+	Name:        "Lansana",
+	DisplayName: "Lansana_DIARRA",
+	//Icon:        "https://example.com/icon.png",
+	//Credentials: []webauthn.Credential{}, // Initialisez avec des données par défaut si nécessaire
+}
+
+// CallWindowsHelloPIN is a handler that handles the registration of a user
+func CallWindowsHelloPIN(w http.ResponseWriter, r *http.Request) {
+	// Register
+	// get the username and password from the form
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	//send Hello Username
+	fmt.Fprintf(w, "Hello %s %s :  this is going to handle the registration with PIN Code", username, password)
+
+}
+
+func BeginRegistration(w http.ResponseWriter, r *http.Request) {
+
+	//fmt.Fprintf(w, "Hello Sirs :  this is going to handle the registration with WebAuthn")
+	/*authSelect := protocol.AuthenticatorSelection{
+		AuthenticatorAttachment: protocol.AuthenticatorAttachment("platform"),
+		RequireResidentKey:      protocol.ResidentKeyNotRequired(),
+		UserVerification:        protocol.VerificationRequired,
+	}
+
+	// See the struct declarations for values
+	conveyancePref := protocol.PreferNoAttestation
+	*/
+	wconfig := &webauthn.Config{
+		RPDisplayName: "Go Webauthn",                             // Display Name for your site
+		RPID:          "localhost",                               // Generally the FQDN for your site
+		RPOrigins:     []string{"http://localhost", "127.0.0.1"}, // The origin URLs allowed for WebAuthn requests
+	}
+
+	if webAuthn, err = webauthn.New(wconfig); err != nil {
+		//fmt.Println(err)
+		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+	}
+
+	//user := datastore.GetUser() // Find or create the new user I coded this hardly
+	options, session, err := webAuthn.BeginRegistration(user)
+	//print all the elements of the session ands the options
+
+	//  webauthn.WithAuthenticatorSelection(authSelect), webauthn.WithConveyancePreference(conveyancePref) args supp for the begReg
+
+	// Handle next steps
+
+	//fmt.Println(session)
+	// store the sessionData values
+	// print everything abut the errors
+	if err != nil {
+		fmt.Println(err)
+		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+	}
+
+	datas.SaveSessionData(session)
+
+	Challenge_hardened = session.Challenge
+	userHardened = string(session.UserID)
+	//fmt.Println(Challenge_hardened)
+	//fmt.Println(options.Response.User)
+	//fmt.Println(userHardened)
+	JSONResponse(w, options, http.StatusOK) // return the options generated
+	// options.publicKey contain our registration options
+	//FinishRegistration(w, r)
+}
+
+func FinishRegistration(w http.ResponseWriter, r *http.Request) {
+
+	// Get the session data stored from the function above
+	//session, erreur := datas.LoadSessionData()
+	//print the session data
+	//fmt.Println(session)
+	//session2 := session[0]
+
+	// test if session is not null and then fetch the 1st element
+
+	/*if erreur != nil {
+		fmt.Println(erreur)
+	}*/
+	//fmt.Println("the final battle")
+	sessionData3 := webauthn.SessionData{
+		Challenge:            Challenge_hardened,
+		UserID:               []byte(userHardened), // "" en base64 décodé
+		AllowedCredentialIDs: [][]byte{},           // Vide pour cet exemple
+		Expires:              time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC),
+		UserVerification:     protocol.VerificationPreferred,
+	}
+	/*
+		session2 := webauthn.SessionData{
+			Challenge:            "ThBV68lT8PmV16orWcd6BwgSlw4dLYw9lEpOuMNGUuU",
+			UserID:               []bytebase64.StdEncoding.DecodeString("dW5pcXVlLWlk"),
+			AllowedCredentialIDs: [][]byte{},                     // Ajoutez des valeurs si nécessaire
+			Expires:              time.Now().Add(24 * time.Hour), // Exemple : 24 heures à partir de maintenant
+			UserVerification:     protocol.VerificationPreferred,
+			Extensions:           protocol.AuthenticationExtensionsClientInputs{}, // Ajoutez des valeurs si nécessaire
+		}
+	*/
+	//print the headers and the body of the request
+	fmt.Println(r.Header)
+	fmt.Println(r.Body)
+	credential, err := webAuthn.FinishRegistration(user, sessionData3, r)
+	if err != nil {
+		// Handle Error and return.
+		fmt.Println(err)
+		//print the trace of the error
+		fmt.Println("there")
+		return
+	}
+
+	JSONResponse(w, "Registration Success"+credential.Descriptor().AttestationType, http.StatusOK)
+
+	// If creation was successful, store the credential object
+	// Pseudocode to add the user credential.
+
+	user.AddCredential(*credential)
+	//datastore.SaveUser(user)
+	// Print the user informations
+	//fmt.Println(user)
+	//print to the console the information about the credential
+	//fmt.Println(credential)
+
+	// Handle next steps
+}
+
+func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
+	dj, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, "Error creating JSON response", http.StatusInternalServerError)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	//w.WriteHeader(status)
+	fmt.Fprintf(w, "%s", dj)
+}
