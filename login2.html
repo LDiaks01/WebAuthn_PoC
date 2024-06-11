@@ -108,6 +108,7 @@
                             clientDataJSON: base64url_encode(clientDataJSON),
                         },
                     };
+                    //alert("rawID: " + base64url_encode(rawId) + "credential.id: " + credential.id);
                     return fetch('/finish', {
                         method: 'POST',
                         headers: {

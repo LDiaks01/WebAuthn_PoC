@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,6 +31,17 @@ var user = DefaultUser{
 	DisplayName: "Lansana_DIARRA",
 	//Icon:        "https://example.com/icon.png",
 	//Credentials: []webauthn.Credential{}, // Initialisez avec des données par défaut si nécessaire
+}
+
+type RequestData struct {
+	ID       string `json:"id"`
+	RawID    string `json:"rawId"`
+	Type     string `json:"type"`
+	Response struct {
+		AttestationObject string `json:"attestationObject"`
+		ClientDataJSON    string `json:"clientDataJSON"`
+	} `json:"response"`
+	// Ajoutez d'autres champs au besoin
 }
 
 // CallWindowsHelloPIN is a handler that handles the registration of a user
@@ -135,21 +147,36 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 	//print the headers and the body of the request
 	//fmt.Println(r.Header)
 	//fmt.Println(r.Body)
-	credential, err := webAuthn.FinishRegistration(user, sessionData3, r)
+
+	c, err := webAuthn.FinishRegistration(user, sessionData3, r)
 	if err != nil {
 		// Handle Error and return.
 		fmt.Println(err)
 		//print the trace of the error
-		fmt.Println("there")
+		//fmt.Println("there")
 		return
 	}
 
-	JSONResponse(w, "Registration Success"+credential.Descriptor().AttestationType, http.StatusOK)
+	fmt.Println("ID:", base64.URLEncoding.EncodeToString(c.ID))
+	fmt.Println("Public Key:", base64.URLEncoding.EncodeToString(c.PublicKey))
+	fmt.Println("Attestation Type:", c.AttestationType)
+	fmt.Println("Transport:", c.Transport)
+	fmt.Println("Flags:")
+	fmt.Println("  User Present:", c.Flags.UserPresent)
+	fmt.Println("  User Verified:", c.Flags.UserVerified)
+	fmt.Println("  Backup Eligible:", c.Flags.BackupEligible)
+	fmt.Println("  Backup State:", c.Flags.BackupState)
+	fmt.Println("Authenticator:")
+	fmt.Println("  AAGUID:", base64.URLEncoding.EncodeToString(c.Authenticator.AAGUID))
+	fmt.Println("  Sign Count:", c.Authenticator.SignCount)
+	fmt.Println("  Attachment:", c.Authenticator.Attachment)
+
+	JSONResponse(w, "Registration Success"+c.Descriptor().AttestationType, http.StatusOK)
 
 	// If creation was successful, store the credential object
 	// Pseudocode to add the user credential.
 
-	user.Credentials = append(user.Credentials, *credential)
+	user.Credentials = append(user.Credentials, *c)
 	//fmt.Println(user.Credentials)
 	//datastore.SaveUser(user)
 	// Print the user informations
