@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="loginForm" method="POST">
+        <label for="email">Username:</label><br>
+        <input type="text" id="email" name="email"><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password"><br><br>
+        
+        <button type="submit" formaction="/register" onclick="registerUser()">Register</button>
+       
+    </form>
+    <button type="submit" onclick="registerUser()">Passkey</button>
+    <button type="submit" onclick="loginUser()">Login with passkey</button>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+          // check whether current browser supports WebAuthn
+          if (!window.PublicKeyCredential) {
+            alert("Error: this browser does not support WebAuthn");
+            return;
+          }
+        });
+    
+        // Base64 to ArrayBuffer
+        function bufferDecode(value) {
+            // Remplacer "-" par "+"
+        let base64String = value.replace(/-/g, "+");
+
+
+        const binaryString = atob(base64String);
+        const length = binaryString.length;
+        const buffer = new ArrayBuffer(length);
+        const view = new Uint8Array(buffer);
+        for (let i = 0; i < length; i++) {
+            view[i] = binaryString.charCodeAt(i);
+        }
+        return buffer;
+          
+        }
+
+        function base64url_decode(value) {
+        const m = value.length % 4;
+        return Uint8Array.from(atob(
+            value.replace(/-/g, '+')
+                .replace(/_/g, '/')
+                .padEnd(value.length + (m === 0 ? 0 : 4 - m), '=')
+        ), c => c.charCodeAt(0)).buffer
+        }
+    
+        // ArrayBuffer to URLBase64
+        function bufferEncode(value) {
+            return value;
+          /*return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");;*/
+        }
+        function base64url_encode(buffer){
+        return btoa(Array.from(new Uint8Array(buffer), b => String.fromCharCode(b)).join(''))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        }
+        function registerUser() {
+            const username = document.getElementById("email").value;
+            if (username === "") {
+                alert("Please enter a username");
+                return;
+            }
+
+            fetch('/registerPIN')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(credentialCreationOptions => {
+                    // Convertir les valeurs encodées en base64url en ArrayBuffer
+                    credentialCreationOptions.publicKey.challenge = base64url_decode(credentialCreationOptions.publicKey.challenge);
+                    credentialCreationOptions.publicKey.user.id = bufferDecode(credentialCreationOptions.publicKey.user.id);
+                    if (credentialCreationOptions.publicKey.excludeCredentials) {
+                        credentialCreationOptions.publicKey.excludeCredentials.forEach(item => {
+                            item.id = bufferDecode(item.id);
+                        });
+                    }
+                    return navigator.credentials.create({
+                        publicKey: credentialCreationOptions.publicKey
+                    });
+                })
+                .then(credential => {
+                    let attestationObject = credential.response.attestationObject;
+                    let clientDataJSON = credential.response.clientDataJSON;
+                    let rawId = credential.rawId;
+                    let requestData = {
+                        id: credential.id,
+                        rawId: base64url_encode(rawId),
+                        type: credential.type,
+                        response: {
+                            attestationObject: base64url_encode(attestationObject),
+                            clientDataJSON: base64url_encode(clientDataJSON),
+                        },
+                    };
+                    return fetch('/finish', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert("Successfully registered " + username + "!");
+                })
+                .catch(error => {
+                    console.error('Error during registration:', error);
+                    alert("Failed to finish register " + username + ": " + error.message);
+                });
+        }
+
+    
+        function loginUser() {
+            const username = document.getElementById("email").value;
+
+            fetch('/beginLogin')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(credentialRequestOptions => {
+                    console.log("Request for login: /beginLogin", credentialRequestOptions);
+                    credentialRequestOptions.publicKey.challenge = base64url_decode(credentialRequestOptions.publicKey.challenge);
+                    credentialRequestOptions.publicKey.allowCredentials.forEach(listItem => {
+                        listItem.id = base64url_decode(listItem.id);
+                    });
+
+                    return navigator.credentials.get({
+                        publicKey: credentialRequestOptions.publicKey
+                    });
+                })
+                .then(assertion => {
+                    console.log("Working with the attestation", assertion.response);
+                    let authData = assertion.response.authenticatorData;
+                    let clientDataJSON = assertion.response.clientDataJSON;
+                    let rawId = assertion.rawId;
+                    let sig = assertion.response.signature;
+                    let userHandle = assertion.response.userHandle;
+
+                    return fetch('/finishLogin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id: assertion.id,
+                            rawId: base64url_encode(rawId),
+                            type: assertion.type,
+                            response: {
+                                authenticatorData: base64url_encode(authData),
+                                clientDataJSON: base64url_encode(clientDataJSON),
+                                signature: base64url_encode(sig),
+                                userHandle: base64url_encode(userHandle),
+                            },
+                        })
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert("Successfully logged in!" + base64url_encode(data.userHandle));
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to login");
+                });
+        }
+
+      </script>
+</body>
+</html>
