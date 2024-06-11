@@ -20,9 +20,12 @@ var (
 var Challenge_hardened string
 var userHardened string
 
+// adding this var for the login part
+var loginSessionData webauthn.SessionData
+
 var user = DefaultUser{
 
-	ID:          []byte("Lansana"),
+	ID:          []byte("Camara"),
 	Name:        "Lansana",
 	DisplayName: "Lansana_DIARRA",
 	//Icon:        "https://example.com/icon.png",
@@ -54,9 +57,9 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	conveyancePref := protocol.PreferNoAttestation
 	*/
 	wconfig := &webauthn.Config{
-		RPDisplayName: "Go Webauthn",                             // Display Name for your site
-		RPID:          "localhost",                               // Generally the FQDN for your site
-		RPOrigins:     []string{"http://localhost", "127.0.0.1"}, // The origin URLs allowed for WebAuthn requests
+		RPDisplayName: "Go Webauthn",                                       // Display Name for your site
+		RPID:          "localhost",                                         // Generally the FQDN for your site
+		RPOrigins:     []string{"http://localhost:8080", "127.0.0.1:8080"}, // The origin URLs allowed for WebAuthn requests
 	}
 
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
@@ -77,6 +80,7 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	// print everything abut the errors
 	if err != nil {
 		fmt.Println(err)
+
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
 	}
 
@@ -87,6 +91,11 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(Challenge_hardened)
 	//fmt.Println(options.Response.User)
 	//fmt.Println(userHardened)
+	//print all the elements of the options, their names and their values
+
+	//print(options.Response.Challenge)
+	//the pubic key printed
+
 	JSONResponse(w, options, http.StatusOK) // return the options generated
 	// options.publicKey contain our registration options
 	//FinishRegistration(w, r)
@@ -124,8 +133,8 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 		}
 	*/
 	//print the headers and the body of the request
-	fmt.Println(r.Header)
-	fmt.Println(r.Body)
+	//fmt.Println(r.Header)
+	//fmt.Println(r.Body)
 	credential, err := webAuthn.FinishRegistration(user, sessionData3, r)
 	if err != nil {
 		// Handle Error and return.
@@ -140,7 +149,8 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 	// If creation was successful, store the credential object
 	// Pseudocode to add the user credential.
 
-	user.AddCredential(*credential)
+	user.Credentials = append(user.Credentials, *credential)
+	//fmt.Println(user.Credentials)
 	//datastore.SaveUser(user)
 	// Print the user informations
 	//fmt.Println(user)
@@ -148,6 +158,11 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(credential)
 
 	// Handle next steps
+	/*print(user.ID)
+	print(userHardened)
+	test := []byte(userHardened)
+	print(test)
+	*/
 }
 
 func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
@@ -158,4 +173,32 @@ func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	//w.WriteHeader(status)
 	fmt.Fprintf(w, "%s", dj)
+}
+
+func BeginLogin(w http.ResponseWriter, r *http.Request) {
+	//just for being sure
+	//user.ID = []byte(userHardened)
+
+	options, sessionData, err := webAuthn.BeginLogin(user)
+	if err != nil {
+		fmt.Println(err.Error())
+		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+	}
+
+	loginSessionData = *sessionData
+	//datas.SaveSessionData(sessionData)
+	//fmt.Println(loginSessionData)
+	JSONResponse(w, options, http.StatusOK)
+
+}
+
+func FinishLogin(w http.ResponseWriter, r *http.Request) {
+	credential, err := webAuthn.FinishLogin(user, loginSessionData, r)
+	if err != nil {
+		fmt.Println(err)
+		JSONResponse(w, "Error LOGIN WebAuthn"+err.Error(), http.StatusInternalServerError)
+	}
+	print("Login Success : ", credential.PublicKey)
+	JSONResponse(w, "Login Success"+credential.Descriptor().AttestationType, http.StatusOK)
+
 }

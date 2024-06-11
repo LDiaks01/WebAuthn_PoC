@@ -47,6 +47,8 @@ func main() {
 	// Appeler la fonction Windows pour verrouiller l'écran
 	http.HandleFunc("/registerPIN", handlers.BeginRegistration)
 	http.HandleFunc("/finish", handlers.FinishRegistration)
+	http.HandleFunc("/beginLogin", handlers.BeginLogin)
+	http.HandleFunc("/finishLogin", handlers.FinishLogin)
 
 	http.ListenAndServe(":8080", nil)
 }
