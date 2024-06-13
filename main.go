@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"net/http"
 	"webauthn-example/handlers"
 )
@@ -15,6 +15,19 @@ var (
 // Initialisez l'instance de WebAuthn
 
 func main() {
+	// Créer un objet User avec des données par défaut
+
+	//db := database.InitDB()
+
+	/*user := database.User{Email: "user@example.com", Username: "user1", Password: "password123"}
+
+	result := db.Create(&user)
+	if result.Error != nil {
+		fmt.Println("Erreur lors de la création de l'utilisateur:", result.Error)
+		return
+	}
+	fmt.Println("Utilisateur créé avec succès:", user)
+	*/
 
 	/*
 		wconfig := &webauthn.Config{
@@ -28,19 +41,14 @@ func main() {
 		}
 	*/
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "login2.html")
+		http.ServeFile(w, r, "static/register.html")
 
 	})
 
-	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		// Register
-		// get the username and password from the form
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-		//send Hello Username
-		fmt.Fprintf(w, "Hello Sirs %s %s", username, password)
-
-	})
+	http.HandleFunc("/register", handlers.RegisterUser)
+	http.HandleFunc("/login", ServeLoginPage)
+	http.HandleFunc("/postLogin", handlers.HandleLogin)
+	http.HandleFunc("/home", HomeHandler)
 
 	//http.HandleFunc("/registerPIN", handlers.CallWindowsHelloPIN)
 
@@ -51,4 +59,28 @@ func main() {
 	http.HandleFunc("/finishLogin", handlers.FinishLogin)
 
 	http.ListenAndServe(":8080", nil)
+}
+
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	username := r.URL.Query().Get("username")
+
+	// You can pass the email and username to your template
+	tmpl, err := template.ParseFiles("static/home.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := struct {
+		Email    string
+		Username string
+	}{
+		Email:    email,
+		Username: username,
+	}
+	tmpl.Execute(w, data)
+}
+
+func ServeLoginPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "login.html")
 }

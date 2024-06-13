@@ -51,22 +51,3 @@ func (u DefaultUser) WebAuthnCredentials() []webauthn.Credential {
 func (u DefaultUser) AddCredential(cred webauthn.Credential) {
 	u.Credentials = append(u.Credentials, cred)
 }
-
-/*
-func main() {
-	// Créer un objet User avec des données par défaut
-	user := &DefaultUser{
-		ID:          []byte("unique-user-id"),
-		Name:        "john_doe",
-		DisplayName: "John Doe",
-		Icon:        "https://example.com/icon.png",
-		Credentials: []webauthn.Credential{},
-	}
-
-	// Afficher les informations de l'utilisateur
-	fmt.Println("ID:", user.WebAuthnID())
-	fmt.Println("Name:", user.WebAuthnName())
-	fmt.Println("DisplayName:", user.WebAuthnDisplayName())
-	fmt.Println("Icon:", user.WebAuthnIcon())
-}
-*/

@@ -3,208 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <title>Login</title>
+    <title>Login Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <h2>Login</h2>
-    <form id="loginForm" method="POST">
-        <label for="email">Username:</label><br>
-        <input type="text" id="email" name="email"><br>
-        <label for="password">Password:</label><br>
-        <input type="password" id="password" name="password"><br><br>
-        
-        <button type="submit" formaction="/register" onclick="registerUser()">Register</button>
-       
-    </form>
-    <button type="submit" onclick="registerUser()">Passkey</button>
-    <button type="submit" onclick="loginUser()">Login with passkey</button>
+    <div class="container">
+        <h2>Registration Form</h2>
+        <form action="/postLogin" method="POST">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <input type="submit" value="Login">
+        </form>
+        <button type="submit" onclick="loginUser()">Login with passkey</button>
+    </div>
+
+
+
     <script>
 
-        $(document).ready(function () {
-    
-          // check whether current browser supports WebAuthn
-          if (!window.PublicKeyCredential) {
-            alert("Error: this browser does not support WebAuthn");
-            return;
-          }
+        var queryParams = new URLSearchParams(window.location.search);
+        // Accéder aux valeurs des paramètres
+        var email = queryParams.get("email");
+        var username = queryParams.get("username");
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // check whether current browser supports WebAuthn
+            if (!window.PublicKeyCredential) {
+                alert("Error: this browser does not support WebAuthn");
+                return;
+            }
         });
-    
-        // Base64 to ArrayBuffer
-        function bufferDecode(value) {
-            // Remplacer "-" par "+"
-        let base64String = value.replace(/-/g, "+");
-
-
-            const binaryString = atob(base64String);
-        const length = binaryString.length;
-        const buffer = new ArrayBuffer(length);
-        const view = new Uint8Array(buffer);
-        for (let i = 0; i < length; i++) {
-            view[i] = binaryString.charCodeAt(i);
-        }
-        return buffer;
-          
-        }
 
         function base64url_decode(value) {
-        const m = value.length % 4;
-        return Uint8Array.from(atob(
-            value.replace(/-/g, '+')
-                .replace(/_/g, '/')
-                .padEnd(value.length + (m === 0 ? 0 : 4 - m), '=')
-        ), c => c.charCodeAt(0)).buffer
+            const m = value.length % 4;
+            return Uint8Array.from(atob(
+                value.replace(/-/g, '+')
+                    .replace(/_/g, '/')
+                    .padEnd(value.length + (m === 0 ? 0 : 4 - m), '=')
+            ), c => c.charCodeAt(0)).buffer
         }
-    
-        // ArrayBuffer to URLBase64
-        function bufferEncode(value) {
-            return value;
-          /*return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
-            .replace(/\+/g, "-")
-            .replace(/\//g, "_")
-            .replace(/=/g, "");;*/
+
+        function base64url_encode(buffer) {
+            return btoa(Array.from(new Uint8Array(buffer), b => String.fromCharCode(b)).join(''))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
         }
-        function base64url_encode(buffer){
-        return btoa(Array.from(new Uint8Array(buffer), b => String.fromCharCode(b)).join(''))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
-        }
-    
-        function registerUser() {
-    
-          username = $("#email").val()
-          if (username === "") {
-            alert("Please enter a username");
-            return;
-          }
-    
-          $.get(
-            '/registerPIN',
-            null,
-            function (data) {
-                //console.log('Data received:', data);
-                //alert('Response received: ' + JSON.stringify(data));
-              return data
-            },
-            'json')
-            .catch(error => {
-                console.error('Error during registration:', error);
-                alert('Error during registration: ' + error.message);
-            })
-            .then((credentialCreationOptions) => {
-              
-                // the challenge need to be an ArrayBuffer, or TypedArray or DataView
-                //it is send as an base64 encoded string
-                console.log(credentialCreationOptions.publicKey.challenge)
-                console.log("printing the challenge")
-              credentialCreationOptions.publicKey.challenge = base64url_decode(credentialCreationOptions.publicKey.challenge);
-              //the user id is given in base64 encoded string nd need to be converted to an ArrayBuffer
-              credentialCreationOptions.publicKey.user.id = bufferDecode(credentialCreationOptions.publicKey.user.id);
-              if (credentialCreationOptions.publicKey.excludeCredentials) {
-                for (var i = 0; i < credentialCreationOptions.publicKey.excludeCredentials.length; i++) {
-                  credentialCreationOptions.publicKey.excludeCredentials[i].id = bufferDecode(credentialCreationOptions.publicKey.excludeCredentials[i].id);
-                }
-              }
-    
-              return navigator.credentials.create({
-                publicKey: credentialCreationOptions.publicKey
-              })
-            })
-            .then((credential) => {
-              let attestationObject = credential.response.attestationObject;
-              let clientDataJSON = credential.response.clientDataJSON;
-              let rawId = credential.rawId;
-            
-              $.post(
-                '/finish',
-                JSON.stringify({
-                  id: credential.id,
-                  rawId: base64url_encode(rawId),
-                  type: credential.type,
-                  response: {
-                    attestationObject: base64url_encode(attestationObject),
-                    clientDataJSON: base64url_encode(clientDataJSON),
-                  },
-                }),
-                function (data) {
-                  return data
-                },
-                'json')
-            })
-            .then((success) => {
-              alert("successfully registered " + username + "!")
-              return
-            })
-            .catch((error) => {
-              console.log(error)
-              alert("failed to finish register " + username + error.message)
-            })
-        }
-    
+
         function loginUser() {
-    
-          username = $("#email").val()
-          /*if (username === "") {
-            alert("Please enter a username");
+            const email = document.getElementById("email").value;
+            if (email === "") {
+            alert("Please enter an email");
             return;
-          }
-        */
-          $.get(
-            '/beginLogin',
-            null,
-            function (data) {
-              return data
-            },
-            'json')
-            .then((credentialRequestOptions) => {
-              console.log("Request for login :/beginLogin"+credentialRequestOptions)
-              credentialRequestOptions.publicKey.challenge = base64url_decode(credentialRequestOptions.publicKey.challenge);
-              credentialRequestOptions.publicKey.allowCredentials.forEach(function (listItem) {
-                listItem.id = base64url_decode(listItem.id)
-              });
-    
-              return navigator.credentials.get({
-                publicKey: credentialRequestOptions.publicKey
-              })
-            })
-            .then((assertion) => {
-              console.log("Working with the attestation"+assertion.response)
-              let authData = assertion.response.authenticatorData;
-              let clientDataJSON = assertion.response.clientDataJSON;
-              let rawId = assertion.rawId;
-              let sig = assertion.response.signature;
-              let userHandle = assertion.response.userHandle;
-    
-              $.post(
-                '/finishLogin',
-                JSON.stringify({
-                  id: assertion.id,
-                  rawId: base64url_encode(rawId),
-                  type: assertion.type,
-                  response: {
-                    authenticatorData: base64url_encode(authData),
-                    clientDataJSON: base64url_encode(clientDataJSON),
-                    signature: base64url_encode(sig),
-                    userHandle: base64url_encode(userHandle),
-                  },
-                }),
-                function (data) {
-                  return data
-                },
-                'json')
-                alert("successfully logged in!" + base64url_encode(assertion.response.userHandle))
-            })
-            .then((success) => {
-              
-              return
-            })
-            .catch((error) => {
-              console.log(error)
-              alert("failed to login ")
-            })
+            }
+
+            fetch('/beginLogin?email=' + email)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(credentialRequestOptions => {
+                    console.log("Request for login: /beginLogin", credentialRequestOptions);
+                    credentialRequestOptions.publicKey.challenge = base64url_decode(credentialRequestOptions.publicKey.challenge);
+                    credentialRequestOptions.publicKey.allowCredentials.forEach(listItem => {
+                        listItem.id = base64url_decode(listItem.id);
+                    });
+
+                    return navigator.credentials.get({
+                        publicKey: credentialRequestOptions.publicKey
+                    });
+                })
+                .then(assertion => {
+                    console.log("Working with the attestation", assertion.response);
+                    let authData = assertion.response.authenticatorData;
+                    let clientDataJSON = assertion.response.clientDataJSON;
+                    let rawId = assertion.rawId;
+                    let sig = assertion.response.signature;
+                    let userHandle = assertion.response.userHandle;
+
+                    return fetch('/finishLogin?email='+email, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id: assertion.id,
+                            rawId: base64url_encode(rawId),
+                            type: assertion.type,
+                            response: {
+                                authenticatorData: base64url_encode(authData),
+                                clientDataJSON: base64url_encode(clientDataJSON),
+                                signature: base64url_encode(sig),
+                                userHandle: base64url_encode(userHandle),
+                            },
+                        })
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert("Successfully logged in!");
+                    window.location.href = '/home?email=' + encodeURIComponent(data.email) + '&username=' + encodeURIComponent(data.username);
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Failed to login");
+                });
         }
-    
-      </script>
+
+    </script>
 </body>
 </html>

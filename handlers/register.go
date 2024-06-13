@@ -5,73 +5,50 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	"webauthn-example/datas"
+	"webauthn-example/database"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 )
+
+var wconfig = &webauthn.Config{
+	RPDisplayName: "Go Webauthn",                                       // Display Name for your site
+	RPID:          "localhost",                                         // Generally the FQDN for your site
+	RPOrigins:     []string{"http://localhost:8080", "127.0.0.1:8080"}, // The origin URLs allowed for WebAuthn requests
+}
 
 var (
 	webAuthn *webauthn.WebAuthn
 	err      error
 )
 
-var Challenge_hardened string
-var userHardened string
-
 // adding this var for the login part
 var loginSessionData webauthn.SessionData
 
-var user = DefaultUser{
-
-	ID:          []byte("Camara"),
-	Name:        "Lansana",
-	DisplayName: "Lansana_DIARRA",
-	//Icon:        "https://example.com/icon.png",
-	//Credentials: []webauthn.Credential{}, // Initialisez avec des données par défaut si nécessaire
-}
-
-type RequestData struct {
-	ID       string `json:"id"`
-	RawID    string `json:"rawId"`
-	Type     string `json:"type"`
-	Response struct {
-		AttestationObject string `json:"attestationObject"`
-		ClientDataJSON    string `json:"clientDataJSON"`
-	} `json:"response"`
-	// Ajoutez d'autres champs au besoin
-}
-
-// CallWindowsHelloPIN is a handler that handles the registration of a user
-func CallWindowsHelloPIN(w http.ResponseWriter, r *http.Request) {
-	// Register
-	// get the username and password from the form
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-
-	//send Hello Username
-	fmt.Fprintf(w, "Hello %s %s :  this is going to handle the registration with PIN Code", username, password)
-
-}
+var RegistrationChallenge string
 
 func BeginRegistration(w http.ResponseWriter, r *http.Request) {
+	db := database.InitDB()
+	// we get the email from the request
+	email := r.FormValue("email")
 
-	//fmt.Fprintf(w, "Hello Sirs :  this is going to handle the registration with WebAuthn")
-	/*authSelect := protocol.AuthenticatorSelection{
-		AuthenticatorAttachment: protocol.AuthenticatorAttachment("platform"),
-		RequireResidentKey:      protocol.ResidentKeyNotRequired(),
-		UserVerification:        protocol.VerificationRequired,
+	// we retrieve the user from the database
+	var userFromDb database.User
+	if db.Where("email = ?", email).First(&userFromDb).Error != nil {
+		fmt.Print("User not found")
+		return
 	}
 
-	// See the struct declarations for values
-	conveyancePref := protocol.PreferNoAttestation
-	*/
-	wconfig := &webauthn.Config{
-		RPDisplayName: "Go Webauthn",                                       // Display Name for your site
-		RPID:          "localhost",                                         // Generally the FQDN for your site
-		RPOrigins:     []string{"http://localhost:8080", "127.0.0.1:8080"}, // The origin URLs allowed for WebAuthn requests
+	var passkeyUser = DefaultUser{
+
+		ID:          []byte(userFromDb.Email),
+		Name:        userFromDb.Username,
+		DisplayName: userFromDb.Username,
+		//Icon:        "https://example.com/icon.png",
+		//Credentials: []webauthn.Credential{}, // Initialisez avec des données par défaut si nécessaire
 	}
 
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
@@ -79,88 +56,75 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
 	}
 
-	//user := datastore.GetUser() // Find or create the new user I coded this hardly
-	options, session, err := webAuthn.BeginRegistration(user)
-	//print all the elements of the session ands the options
-
-	//  webauthn.WithAuthenticatorSelection(authSelect), webauthn.WithConveyancePreference(conveyancePref) args supp for the begReg
-
-	// Handle next steps
-
-	//fmt.Println(session)
-	// store the sessionData values
-	// print everything abut the errors
+	options, session, err := webAuthn.BeginRegistration(passkeyUser)
 	if err != nil {
 		fmt.Println(err)
 
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
 	}
 
-	datas.SaveSessionData(session)
-
-	Challenge_hardened = session.Challenge
-	userHardened = string(session.UserID)
-	//fmt.Println(Challenge_hardened)
-	//fmt.Println(options.Response.User)
-	//fmt.Println(userHardened)
-	//print all the elements of the options, their names and their values
-
-	//print(options.Response.Challenge)
-	//the pubic key printed
+	RegistrationChallenge = string(session.Challenge)
+	fmt.Println("AllowedCredentialIDs in Begin Registration:", session.AllowedCredentialIDs)
+	fmt.Println("Time expires in Begin Registration:", session.Expires)
 
 	JSONResponse(w, options, http.StatusOK) // return the options generated
-	// options.publicKey contain our registration options
-	//FinishRegistration(w, r)
 }
 
 func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 
-	// Get the session data stored from the function above
-	//session, erreur := datas.LoadSessionData()
-	//print the session data
-	//fmt.Println(session)
-	//session2 := session[0]
+	db := database.InitDB()
+	email := r.FormValue("email")
 
-	// test if session is not null and then fetch the 1st element
-
-	/*if erreur != nil {
-		fmt.Println(erreur)
-	}*/
-	//fmt.Println("the final battle")
-	sessionData3 := webauthn.SessionData{
-		Challenge:            Challenge_hardened,
-		UserID:               []byte(userHardened), // "" en base64 décodé
-		AllowedCredentialIDs: [][]byte{},           // Vide pour cet exemple
-		Expires:              time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC),
-		UserVerification:     protocol.VerificationPreferred,
-	}
-	/*
-		session2 := webauthn.SessionData{
-			Challenge:            "ThBV68lT8PmV16orWcd6BwgSlw4dLYw9lEpOuMNGUuU",
-			UserID:               []bytebase64.StdEncoding.DecodeString("dW5pcXVlLWlk"),
-			AllowedCredentialIDs: [][]byte{},                     // Ajoutez des valeurs si nécessaire
-			Expires:              time.Now().Add(24 * time.Hour), // Exemple : 24 heures à partir de maintenant
-			UserVerification:     protocol.VerificationPreferred,
-			Extensions:           protocol.AuthenticationExtensionsClientInputs{}, // Ajoutez des valeurs si nécessaire
-		}
-	*/
-	//print the headers and the body of the request
-	//fmt.Println(r.Header)
-	//fmt.Println(r.Body)
-
-	c, err := webAuthn.FinishRegistration(user, sessionData3, r)
-	if err != nil {
-		// Handle Error and return.
-		fmt.Println(err)
-		//print the trace of the error
-		//fmt.Println("there")
+	var userFromUsers database.User
+	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+		fmt.Print("User not found")
 		return
 	}
 
+	sessionData10 := webauthn.SessionData{
+		Challenge:            RegistrationChallenge,
+		UserID:               []byte(email), // "" en base64 décodé
+		AllowedCredentialIDs: [][]byte{},    // Vide pour cet exemple
+		Expires:              time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC),
+		UserVerification:     protocol.VerificationPreferred,
+	}
+
+	regUser := DefaultUser{
+		ID:          []byte(email),
+		Name:        userFromUsers.Username,
+		DisplayName: userFromUsers.Username,
+	}
+
+	c, err := webAuthn.FinishRegistration(regUser, sessionData10, r)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("AllowedCredentialIDs in Begin Registration:", sessionData10.AllowedCredentialIDs)
+	fmt.Println("Time expires in Begin Registration:", sessionData10.Expires)
+	//then we save the credential in the database
+	newPassKeyEntry := database.UserPasskey{
+		UserID:          email,
+		PublicKey:       c.PublicKey,
+		CredentialID:    c.ID,
+		AttestationType: c.AttestationType,
+		Transport:       joinTransports(c.Transport),
+		UserPresent:     c.Flags.UserPresent,
+		UserVerified:    c.Flags.UserVerified,
+		BackupEligible:  c.Flags.BackupEligible,
+		BackupState:     c.Flags.BackupState,
+		AAGUID:          c.Authenticator.AAGUID,
+		SignCount:       c.Authenticator.SignCount,
+		Attachment:      string(c.Authenticator.Attachment),
+	}
+
+	db.Create(&newPassKeyEntry)
+	//make new credential
+	fmt.Println("c in FinishRegistration")
 	fmt.Println("ID:", base64.URLEncoding.EncodeToString(c.ID))
 	fmt.Println("Public Key:", base64.URLEncoding.EncodeToString(c.PublicKey))
-	fmt.Println("Attestation Type:", c.AttestationType)
-	fmt.Println("Transport:", c.Transport)
+	fmt.Println("Attestation Type:", c.Descriptor().AttestationType)
+	fmt.Println("Transport:", c.Descriptor().Transport)
 	fmt.Println("Flags:")
 	fmt.Println("  User Present:", c.Flags.UserPresent)
 	fmt.Println("  User Verified:", c.Flags.UserVerified)
@@ -173,23 +137,6 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 
 	JSONResponse(w, "Registration Success"+c.Descriptor().AttestationType, http.StatusOK)
 
-	// If creation was successful, store the credential object
-	// Pseudocode to add the user credential.
-
-	user.Credentials = append(user.Credentials, *c)
-	//fmt.Println(user.Credentials)
-	//datastore.SaveUser(user)
-	// Print the user informations
-	//fmt.Println(user)
-	//print to the console the information about the credential
-	//fmt.Println(credential)
-
-	// Handle next steps
-	/*print(user.ID)
-	print(userHardened)
-	test := []byte(userHardened)
-	print(test)
-	*/
 }
 
 func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
@@ -203,29 +150,161 @@ func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 }
 
 func BeginLogin(w http.ResponseWriter, r *http.Request) {
-	//just for being sure
-	//user.ID = []byte(userHardened)
+	if webAuthn, err = webauthn.New(wconfig); err != nil {
+		//fmt.Println(err)
+		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+	}
+	db := database.InitDB()
+	email := r.FormValue("email")
 
-	options, sessionData, err := webAuthn.BeginLogin(user)
+	var userFromUsers database.User
+	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+
+	var db_passkeys []database.UserPasskey
+	if db.Where("user_id = ?", email).Find(&db_passkeys).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+
+	var userCredentials []webauthn.Credential
+	for _, userFromPasskeyUser := range db_passkeys {
+		userCredentials = append(userCredentials, webauthn.Credential{
+			ID:        userFromPasskeyUser.CredentialID,
+			PublicKey: userFromPasskeyUser.PublicKey,
+			Authenticator: webauthn.Authenticator{
+				AAGUID:     userFromPasskeyUser.AAGUID,
+				SignCount:  userFromPasskeyUser.SignCount,
+				Attachment: protocol.AuthenticatorAttachment(userFromPasskeyUser.Attachment),
+			},
+			AttestationType: userFromPasskeyUser.AttestationType,
+			Transport:       splitTransports(userFromPasskeyUser.Transport),
+			Flags: webauthn.CredentialFlags{
+				UserPresent:    userFromPasskeyUser.UserPresent,
+				UserVerified:   userFromPasskeyUser.BackupEligible,
+				BackupEligible: userFromPasskeyUser.UserVerified,
+				BackupState:    userFromPasskeyUser.BackupState,
+			},
+		})
+	}
+
+	// create locally a new credential
+
+	regUser := DefaultUser{
+		ID:          []byte(userFromUsers.Email),
+		Name:        userFromUsers.Username,
+		DisplayName: userFromUsers.Username,
+		Credentials: userCredentials,
+	}
+
+	options, sessionData, err := webAuthn.BeginLogin(regUser)
 	if err != nil {
 		fmt.Println(err.Error())
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
 	}
 
 	loginSessionData = *sessionData
-	//datas.SaveSessionData(sessionData)
-	//fmt.Println(loginSessionData)
 	JSONResponse(w, options, http.StatusOK)
 
 }
 
 func FinishLogin(w http.ResponseWriter, r *http.Request) {
-	credential, err := webAuthn.FinishLogin(user, loginSessionData, r)
+	db := database.InitDB()
+	email := r.FormValue("email")
+	var userFromUsers database.User
+	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+
+	var db_passkeys []database.UserPasskey
+	if db.Where("user_id = ?", email).Find(&db_passkeys).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+	//create a list of credentials
+	var userCredentials []webauthn.Credential
+	for _, userFromPasskeyUser := range db_passkeys {
+		userCredentials = append(userCredentials, webauthn.Credential{
+			ID:        userFromPasskeyUser.CredentialID,
+			PublicKey: userFromPasskeyUser.PublicKey,
+			Authenticator: webauthn.Authenticator{
+				AAGUID:     userFromPasskeyUser.AAGUID,
+				SignCount:  userFromPasskeyUser.SignCount,
+				Attachment: protocol.AuthenticatorAttachment(userFromPasskeyUser.Attachment),
+			},
+			AttestationType: userFromPasskeyUser.AttestationType,
+			Transport:       splitTransports(userFromPasskeyUser.Transport),
+			Flags: webauthn.CredentialFlags{
+				UserPresent:    userFromPasskeyUser.UserPresent,
+				UserVerified:   userFromPasskeyUser.BackupEligible,
+				BackupEligible: userFromPasskeyUser.UserVerified,
+				BackupState:    userFromPasskeyUser.BackupState,
+			},
+		})
+	}
+
+	regUser := DefaultUser{
+		ID:          []byte(userFromUsers.Email),
+		Name:        userFromUsers.Username,
+		DisplayName: userFromUsers.Username,
+		Credentials: userCredentials,
+	}
+
+	credential, err := webAuthn.FinishLogin(regUser, loginSessionData, r)
+	fmt.Println("c in FinishLogin")
+	fmt.Println("ID:", base64.URLEncoding.EncodeToString(regUser.Credentials[0].ID))
+	fmt.Println("Public Key:", base64.URLEncoding.EncodeToString(regUser.Credentials[0].PublicKey))
+	fmt.Println("Attestation Type:", regUser.Credentials[0].AttestationType)
+	fmt.Println("Transport:", regUser.Credentials[0].Transport)
+	fmt.Println("Flags:")
+	fmt.Println("  User Present:", regUser.Credentials[0].Flags.UserPresent)
+	fmt.Println("  User Verified:", regUser.Credentials[0].Flags.UserVerified)
+	fmt.Println("  Backup Eligible:", regUser.Credentials[0].Flags.BackupEligible)
+	fmt.Println("  Backup State:", regUser.Credentials[0].Flags.BackupState)
+	fmt.Println("Authenticator:")
+	fmt.Println("  AAGUID:", base64.URLEncoding.EncodeToString(regUser.Credentials[0].Authenticator.AAGUID))
+	fmt.Println("  Sign Count:", regUser.Credentials[0].Authenticator.SignCount)
+	fmt.Println("  Attachment:", regUser.Credentials[0].Authenticator.Attachment)
 	if err != nil {
 		fmt.Println(err)
 		JSONResponse(w, "Error LOGIN WebAuthn"+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	print("Login Success : ", credential.PublicKey)
-	JSONResponse(w, "Login Success"+credential.Descriptor().AttestationType, http.StatusOK)
 
+	print("Login Success : ", base64.URLEncoding.EncodeToString(credential.PublicKey), "\n")
+
+	//create a json entry that contains the username and email
+	userResponse := struct {
+		Email    string `json:"email"`
+		Username string `json:"username"`
+	}{Email: userFromUsers.Email,
+		Username: userFromUsers.Username,
+	}
+
+	//w.Header().Set("Content-Type", "application/json")
+	//json.NewEncoder(w).Encode(userResponse)
+	//http.Redirect(w, r, "/home?email="+userFromUsers.Email+"&username="+userFromUsers.Username, http.StatusSeeOther)
+	JSONResponse(w, userResponse, http.StatusOK)
+
+}
+
+func joinTransports(transports []protocol.AuthenticatorTransport) string {
+	transportStrings := make([]string, len(transports))
+	for i, transport := range transports {
+		transportStrings[i] = string(transport)
+	}
+	return strings.Join(transportStrings, ",")
+}
+
+// Fonction pour convertir une chaîne séparée par des virgules en []protocol.AuthenticatorTransport
+func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
+	transportStrings := strings.Split(transportStr, ",")
+	transports := make([]protocol.AuthenticatorTransport, len(transportStrings))
+	for i, transport := range transportStrings {
+		transports[i] = protocol.AuthenticatorTransport(transport)
+	}
+	return transports
 }
