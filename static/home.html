@@ -43,17 +43,112 @@
         .button:hover {
             background-color: #0056b3;
         }
+        .credential-list {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row; /* Alignement vertical par défaut */
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px; /* Espacement entre les cartes */
+}
+
+.credential-item {
+    width: calc(25% - 20px); /* 25% de largeur avec espace entre les cartes */
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    margin: 20px;
+    padding: 20px;
+    justify-content: center; 
+    /* Permet aux cartes de s'étendre pour remplir l'espace disponible */
+}
+
+.credential-item p {
+    margin: 5px 0;
+}
+
+.credential-item .delete-button {
+    display: block;
+    width: 100px;
+    margin: 10px auto;
+    padding: 10px;
+    text-align: center;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.credential-item .delete-button:hover {
+    background-color: #c82333;
+}
+h2 {
+    text-align: center;
+    color: #333;
+}
+img {
+    text-align: center;
+    justify-content: center; 
+    width: 200px;    /* Définit la largeur de l'image */
+    height: 150px;   /* Définit la hauteur de l'image */
+    display: block;  /* Empêche les marges automatiques verticales autour de l'image */
+    object-fit: contain; /* Optionnel: maintient les proportions de l'image */
+        }
     </style>
 </head>
 <body>
+    <a href="/login">Logout</a>
     <div class="container">
         <h1>Welcome Passkeys PoC</h1>
         <p>Hello, {{ .Username }}!</p>
         <p>Your email: {{ .Email }}</p>
         <button class="button" onclick="registerUser()">Add Passkey Authentication</button>
     </div>
+    <h2>Your Passkeys</h2>
+    <div class="credential-list" id="credentialList">
+        <!-- Passkeys will be dynamically inserted here -->
+    </div>
+    
+
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const email = "{{ .Email }}";
+            fetch(`/getUserCredentials?email=${email}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(credentials => {
+                    const credentialList = document.getElementById('credentialList');
+                    credentials.forEach(credential => {
+                        const div = document.createElement('div');
+                        div.classList.add('credential-item');
+                        div.innerHTML = `
+                            <p>AAGUID: ${credential.AAGUID}</p>
+                            <p>Description: ${credential.Description}</p>
+                            <p>CreatedAt: ${credential.CreatedAt}</p>
+                            <p>Verif Method: ${credential.VerificationMethod}</p>
+                            <img src="${credential.ImageLight}" alt="Image light ">
+                           <!-- <img src="${credential.ImageDark}" alt="Image dark "> -->
+                            <button class="delete-button" onclick="deleteCredential('${credential.CredentialID}')">Delete</button>
+                        `;
+                        credentialList.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        });
 
         var queryParams = new URLSearchParams(window.location.search);
         // Accéder aux valeurs des paramètres
@@ -144,6 +239,31 @@
                     console.error('Error during registration:', error);
                     alert("Failed to finish register " + username + ": " + error.message);
                 });
+        }
+
+        function deleteCredential(credentialID) {
+            fetch('/deleteCredential', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: credentialID
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Credential deleted successfully!');
+                // Optionally, remove the credential item from the DOM
+                document.location.reload(true); // Reload page to update the list
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to delete credential');
+            });
         }
 
     </script>

@@ -57,7 +57,8 @@ func main() {
 	http.HandleFunc("/finish", handlers.FinishRegistration)
 	http.HandleFunc("/beginLogin", handlers.BeginLogin)
 	http.HandleFunc("/finishLogin", handlers.FinishLogin)
-
+	http.HandleFunc("/getUserCredentials", handlers.GetUserCredentialsHandler)
+	http.HandleFunc("/deleteCredential", handlers.DeleteCredentialHandler)
 	http.ListenAndServe(":8080", nil)
 }
 
