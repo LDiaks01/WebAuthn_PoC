@@ -1,0 +1,103 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+p {
+    color: #666;
+    text-align: center;
+}
+
+.button {
+    display: block;
+    width: 200px;
+    margin: 20px auto;
+    padding: 10px;
+    text-align: center;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #0056b3;
+}
+
+.credential-list {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+}
+
+.credential-item {
+    width: calc(25% - 20px);
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    margin: 20px;
+    padding: 20px;
+    justify-content: center;
+}
+
+.credential-item p {
+    margin: 5px 0;
+}
+
+.credential-item .delete-button {
+    display: block;
+    width: 100px;
+    margin: 10px auto;
+    padding: 10px;
+    text-align: center;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.credential-item .delete-button:hover {
+    background-color: #c82333;
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+}
+
+img {
+    text-align: center;
+    justify-content: center;
+    width: 200px;
+    height: 150px;
+    display: block;
+    object-fit: contain;
+}

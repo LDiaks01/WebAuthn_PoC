@@ -6,40 +6,8 @@ import (
 	"webauthn-example/handlers"
 )
 
-/*
-var (
-	webAuthn *webauthn.WebAuthn
-	err      error
-)
-*/
-// Initialisez l'instance de WebAuthn
-
 func main() {
-	// Créer un objet User avec des données par défaut
 
-	//db := database.InitDB()
-
-	/*user := database.User{Email: "user@example.com", Username: "user1", Password: "password123"}
-
-	result := db.Create(&user)
-	if result.Error != nil {
-		fmt.Println("Erreur lors de la création de l'utilisateur:", result.Error)
-		return
-	}
-	fmt.Println("Utilisateur créé avec succès:", user)
-	*/
-
-	/*
-		wconfig := &webauthn.Config{
-			RPDisplayName: "Go Webauthn",                // Display Name for your site
-			RPID:          "go-webauthn.local",          // Generally the FQDN for your site
-			RPOrigins:     []string{"http://localhost"}, // The origin URLs allowed for WebAuthn requests
-		}
-
-		if webAuthn, err = webauthn.New(wconfig); err != nil {
-			fmt.Println(err)
-		}
-	*/
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/register.html")
 

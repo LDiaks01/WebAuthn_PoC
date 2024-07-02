@@ -9,8 +9,6 @@ import (
 )
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	// Register
-	// get the username and password from the form
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	email := r.FormValue("email")
