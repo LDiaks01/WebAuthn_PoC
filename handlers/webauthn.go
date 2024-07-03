@@ -159,7 +159,7 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 	//make new credential
 	fmt.Println("c in FinishRegistration\n----------------")
-	credConsoleLogger(c)
+	//credConsoleLogger(c)
 	fmt.Println("Registration Success")
 
 	JSONResponse(w, "Registration Success"+c.Descriptor().AttestationType, http.StatusOK)
@@ -255,8 +255,8 @@ func FinishLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	credential, err := webAuthn.FinishLogin(regUser, loginSessionData, r)
-	fmt.Println("c in FinishLogin :")
-	credConsoleLogger(credential)
+	//fmt.Println("c in FinishLogin :")
+	//credConsoleLogger(credential)
 	if err != nil {
 		fmt.Println(err)
 		JSONResponse(w, "Error LOGIN WebAuthn"+err.Error(), http.StatusInternalServerError)

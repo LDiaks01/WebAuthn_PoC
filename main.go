@@ -30,7 +30,6 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	username := r.URL.Query().Get("username")
 
-	
 	tmpl, err := template.ParseFiles("static/home.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -47,5 +46,5 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServeLoginPage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "login.html")
+	http.ServeFile(w, r, "static/login.html")
 }
