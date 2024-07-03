@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"webauthn-example/database"
+	"github.com/LDiaks01/WebAuthn_PoC/database"
 )
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {

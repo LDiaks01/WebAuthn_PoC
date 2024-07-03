@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"webauthn-example/database"
+	"github.com/LDiaks01/WebAuthn_PoC/database"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"

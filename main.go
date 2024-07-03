@@ -3,7 +3,7 @@ package main
 import (
 	"html/template"
 	"net/http"
-	"webauthn-example/handlers"
+	"github.com/LDiaks01/WebAuthn_PoC/handlers"
 )
 
 func main() {
