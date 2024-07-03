@@ -1,4 +1,4 @@
-module webauthn-example
+module github.com/LDiaks01/WebAuthn_PoC
 
 go 1.22.3
 
