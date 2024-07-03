@@ -18,9 +18,9 @@ type User struct {
 
 type UserPasskey struct {
 	gorm.Model
-	UserID          string //`gorm:"size:255;column:user_id;uniqueIndex:idx_user_platform(64);not null"`
-	CredentialID    []byte //`gorm:"type:binary(255);not null;column:credential_id;uniqueIndex:idx_user_platform(64)"`
-	PublicKey       []byte //`gorm:"type:blob;not null;"`
+	UserID          string
+	CredentialID    []byte
+	PublicKey       []byte
 	AttestationType string
 	Transport       string
 	UserPresent     bool
@@ -37,6 +37,8 @@ var (
 	once sync.Once
 )
 
+// to iniiate the database by using the Singleton design pattern
+// to ensure that the database is initiated only once
 func InitDB() *gorm.DB {
 	once.Do(func() {
 		dsn := "root:@tcp(127.0.0.1:3306)/passkeys?charset=utf8mb4&parseTime=True&loc=Local"

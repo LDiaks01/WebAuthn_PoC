@@ -17,10 +17,6 @@ func main() {
 	http.HandleFunc("/login", ServeLoginPage)
 	http.HandleFunc("/postLogin", handlers.HandleLogin)
 	http.HandleFunc("/home", HomeHandler)
-
-	//http.HandleFunc("/registerPIN", handlers.CallWindowsHelloPIN)
-
-	// Appeler la fonction Windows pour verrouiller l'écran
 	http.HandleFunc("/registerPIN", handlers.BeginRegistration)
 	http.HandleFunc("/finish", handlers.FinishRegistration)
 	http.HandleFunc("/beginLogin", handlers.BeginLogin)
@@ -34,7 +30,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	username := r.URL.Query().Get("username")
 
-	// You can pass the email and username to your template
+	
 	tmpl, err := template.ParseFiles("static/home.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

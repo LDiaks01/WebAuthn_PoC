@@ -167,12 +167,14 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 }
 
 // function that take the aaguid and retun the formatted UUID
+// then the return can be used to search the AAGUID in the JSON schema
 func formatAAGUID(aaguid []byte) string {
 	uuidHex := hex.EncodeToString(aaguid)
 	return fmt.Sprintf("%s-%s-%s-%s-%s", uuidHex[0:8], uuidHex[8:12], uuidHex[12:16], uuidHex[16:20], uuidHex[20:])
 
 }
 
+// function that return a JSON response
 func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 	dj, err := json.Marshal(data)
 	if err != nil {
@@ -287,7 +289,7 @@ func joinTransports(transports []protocol.AuthenticatorTransport) string {
 	return strings.Join(transportStrings, ",")
 }
 
-// convert a string to a []protocol.AuthenticatorTransport
+// convert a string to a []protocol.AuthenticatorTransport for use in the protocol
 func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
 	transportStrings := strings.Split(transportStr, ",")
 	transports := make([]protocol.AuthenticatorTransport, len(transportStrings))
@@ -297,6 +299,7 @@ func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
 	return transports
 }
 
+// handle the deletion of a credential
 func DeleteCredentialHandler(w http.ResponseWriter, r *http.Request) {
 	db := database.InitDB()
 	body, err := io.ReadAll(r.Body)
@@ -334,6 +337,7 @@ func DeleteCredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// handle the printing of the user credentials in the home webpage
 func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	db := database.InitDB()
@@ -396,6 +400,9 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, passkeyEntries, http.StatusOK)
 }
 
+// Retrieve the user credentials from the database as a list of protocol.CredentialDescriptor
+// This is used to populate the user's credentials when registering
+// to avoid registering the same credential twice
 func retrieveUserCredsAsDescriptor(email string) []protocol.CredentialDescriptor {
 	db := database.InitDB()
 
@@ -421,6 +428,8 @@ func retrieveUserCredsAsDescriptor(email string) []protocol.CredentialDescriptor
 
 }
 
+// Retrieve the user credentials from the database as a list of webauthn.Credential
+// This is used to populate the user's credentials when they log in
 func retrieveUserCredsAsCredentialList(email string) []webauthn.Credential {
 	db := database.InitDB()
 	//get the user from the database
@@ -458,6 +467,7 @@ func retrieveUserCredsAsCredentialList(email string) []webauthn.Credential {
 
 }
 
+// Print the credential to the console
 func credConsoleLogger(c *webauthn.Credential) {
 	fmt.Println("----------------------------------------")
 	fmt.Println("Credential ID:", base64.URLEncoding.EncodeToString(c.ID))
