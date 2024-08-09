@@ -3,6 +3,7 @@ package main
 import (
 	"html/template"
 	"net/http"
+
 	"github.com/LDiaks01/WebAuthn_PoC/handlers"
 )
 
@@ -17,10 +18,10 @@ func main() {
 	http.HandleFunc("/login", ServeLoginPage)
 	http.HandleFunc("/postLogin", handlers.HandleLogin)
 	http.HandleFunc("/home", HomeHandler)
-	http.HandleFunc("/registerPIN", handlers.BeginRegistration)
-	http.HandleFunc("/finish", handlers.FinishRegistration)
-	http.HandleFunc("/beginLogin", handlers.BeginLogin)
-	http.HandleFunc("/finishLogin", handlers.FinishLogin)
+	http.HandleFunc("/registerPIN", handlers.BeginMobileRegistration)
+	http.HandleFunc("/finishMobileRegister", handlers.FinishMobileRegistration)
+	http.HandleFunc("/beginMobileLogin", handlers.MobileLogin)
+	http.HandleFunc("/finishMobileLogin", handlers.FinishLogin)
 	http.HandleFunc("/getUserCredentials", handlers.GetUserCredentialsHandler)
 	http.HandleFunc("/deleteCredential", handlers.DeleteCredentialHandler)
 	http.ListenAndServe(":8080", nil)

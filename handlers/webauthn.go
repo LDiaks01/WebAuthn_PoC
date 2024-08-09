@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/LDiaks01/WebAuthn_PoC/database"
@@ -54,7 +52,7 @@ var (
 var RegistrationChallenge string
 var LoginChallenge string
 
-func BeginRegistration(w http.ResponseWriter, r *http.Request) {
+func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
 		//fmt.Println(err)
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
@@ -62,8 +60,16 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 
 	db := database.InitDB()
 	// we get the email from the request
-	email := r.FormValue("email")
+	var email string
 
+	err := json.NewDecoder(r.Body).Decode(&email)
+	// Décoder le JSON à partir du corps de la requête
+	if err != nil {
+		http.Error(w, "Error decoding JSON content"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println("Android printing  email:", email)
 	// we retrieve the user from the database
 	var userFromDb database.User
 	if db.Where("email = ?", email).First(&userFromDb).Error != nil {
@@ -77,7 +83,7 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 		Name:        userFromDb.Username,
 		DisplayName: userFromDb.Username,
 		//Icon:        "https://example.com/icon.png",
-		//Credentials: retrieveUserCredentials(email), // Initialisez avec des données par défaut si nécessaire
+		//Credentials: retrieveUserCredentials(email), // No more need to do it here, it's done in the BeginRegistration function
 	}
 
 	/* for selecting the authenticator
@@ -88,7 +94,7 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	options, session, err := webAuthn.BeginRegistration(passkeyUser, webauthn.WithExclusions(retrieveUserCredsAsDescriptor(email)))
+	options, session, err := webAuthn.BeginRegistration(passkeyUser, webauthn.WithExclusions(retrieveUserCredsAsMobileDescriptor(email)))
 	if err != nil {
 		fmt.Println(err)
 
@@ -96,60 +102,65 @@ func BeginRegistration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RegistrationChallenge = string(session.Challenge)
+	var sentOptions = mobileCredentialOptionBuilder(options.Response)
+	fmt.Println(sentOptions)
 
-	JSONResponse(w, options, http.StatusOK) // return the options generated
+	JSONResponse(w, sentOptions, http.StatusOK) // return the options generated
 }
 
-func FinishRegistration(w http.ResponseWriter, r *http.Request) {
+func FinishMobileRegistration(w http.ResponseWriter, r *http.Request) {
 
 	db := database.InitDB()
-	email := r.FormValue("email")
+
+	var data RegistrationData
+
+	// Retrieve the JSON data from the request
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		http.Error(w, "Error decoding JSON"+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	var userFromUsers database.User
-	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+	if db.Where("email = ?", data.UserID).First(&userFromUsers).Error != nil {
 		fmt.Print("User not found")
 		return
 	}
 
-	regSessionData := webauthn.SessionData{
-		Challenge:            RegistrationChallenge,
-		UserID:               []byte(email), // "" en base64 décodé
-		AllowedCredentialIDs: [][]byte{},    // Vide pour cet exemple
-		Expires:              time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC),
-		UserVerification:     protocol.VerificationPreferred,
-	}
+	/*
+		regSessionData := webauthn.SessionData{
+			Challenge:            RegistrationChallenge,
+			UserID:               []byte(email), // "" en base64 décodé
+			AllowedCredentialIDs: [][]byte{},    // Vide pour cet exemple
+			Expires:              time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC),
+			UserVerification:     protocol.VerificationPreferred,
+		}
 
-	regUser := DefaultUser{
-		ID:          []byte(email),
-		Name:        userFromUsers.Username,
-		DisplayName: userFromUsers.Username,
-	}
+		regUser := DefaultUser{
+			ID:          []byte(email),
+			Name:        userFromUsers.Username,
+			DisplayName: userFromUsers.Username,
+		}
 
-	c, err := webAuthn.FinishRegistration(regUser, regSessionData, r)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+		c, err := webAuthn.FinishRegistration(regUser, regSessionData, r)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
-	//print the user ID base64url
-	fmt.Println("User ID:", base64.URLEncoding.EncodeToString(regUser.ID))
-
+		//print the user ID base64url
+		fmt.Println("User ID:", base64.URLEncoding.EncodeToString(regUser.ID))
+	*/
 	//then we save the credential in the database,
 	// the obligatories are just pb_key, user_id, credential_id,
 	// the rest is optional
 	newPassKeyEntry := database.UserPasskey{
-		UserID:          email,
-		PublicKey:       c.PublicKey,
-		CredentialID:    c.ID,
-		AttestationType: c.AttestationType,
-		Transport:       joinTransports(c.Transport),
-		UserPresent:     c.Flags.UserPresent,
-		UserVerified:    c.Flags.UserVerified,
-		BackupEligible:  c.Flags.BackupEligible,
-		BackupState:     c.Flags.BackupState,
-		AAGUID:          c.Authenticator.AAGUID,
-		SignCount:       c.Authenticator.SignCount,
-		Attachment:      string(c.Authenticator.Attachment),
+		UserID:         data.UserID,
+		CredentialID:   data.CredentialID,
+		Attachment:     data.AuthData,
+		ClientDataHash: data.ClientDataHash,
 	}
 
 	errv := db.Create(&newPassKeyEntry)
@@ -157,20 +168,10 @@ func FinishRegistration(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error creating passkey entry:", errv.Error)
 		return
 	}
-	//make new credential
-	fmt.Println("c in FinishRegistration\n----------------")
 	//credConsoleLogger(c)
 	fmt.Println("Registration Success")
 
-	JSONResponse(w, "Registration Success"+c.Descriptor().AttestationType, http.StatusOK)
-
-}
-
-// function that take the aaguid and retun the formatted UUID
-// then the return can be used to search the AAGUID in the JSON schema
-func formatAAGUID(aaguid []byte) string {
-	uuidHex := hex.EncodeToString(aaguid)
-	return fmt.Sprintf("%s-%s-%s-%s-%s", uuidHex[0:8], uuidHex[8:12], uuidHex[12:16], uuidHex[16:20], uuidHex[20:])
+	JSONResponse(w, "Registration Success", http.StatusCreated)
 
 }
 
@@ -185,19 +186,30 @@ func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 	fmt.Fprintf(w, "%s", dj)
 }
 
-func BeginLogin(w http.ResponseWriter, r *http.Request) {
+func MobileLogin(w http.ResponseWriter, r *http.Request) {
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
 		//fmt.Println(err)
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
 	}
 
 	db := database.InitDB()
-	email := r.FormValue("email")
+	// we get the email from the request
+	var email string
 
+	err := json.NewDecoder(r.Body).Decode(&email)
+	// Décoder le JSON à partir du corps de la requête
+	if err != nil {
+		http.Error(w, "Error decoding JSON content"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// We need to build the response in a required json format
+	credentialList := retrieveUserCredsAsMobileDescriptor(email)
 	// search the email in users_table first
 	var userFromUsers database.User
 	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
 		fmt.Print("User not exist")
+		http.Error(w, "User does not exist", http.StatusBadRequest)
 		return
 	}
 
@@ -207,22 +219,40 @@ func BeginLogin(w http.ResponseWriter, r *http.Request) {
 		fmt.Print("User has no passkey")
 		return
 	}
-
-	regUser := DefaultUser{
-		ID:          []byte(userFromUsers.Email),
-		Name:        userFromUsers.Username,
-		DisplayName: userFromUsers.Username,
-		Credentials: retrieveUserCredsAsCredentialList(email),
+	// test if db_passkeys is empty
+	if len(db_passkeys) == 0 {
+		fmt.Print("User has no passkey")
+		return
 	}
 
-	options, sessionData, err := webAuthn.BeginLogin(regUser)
-	if err != nil {
-		fmt.Println(err.Error())
-		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
-	}
+	// The get Assertion options is the type that will be sent to the client
+	var assertionOption GetAssertionOptions
+	assertionOption.ClientDataHash = db_passkeys[0].ClientDataHash
+	assertionOption.RpID = "localhost"
+	assertionOption.RequireUserPresence = true
+	assertionOption.RequireUserVerification = false
+	assertionOption.AllowCredentialDescriptorList = credentialList
 
-	LoginChallenge = sessionData.Challenge
-	JSONResponse(w, options, http.StatusOK)
+	fmt.Println("Assertion Option:", assertionOption)
+	JSONResponse(w, assertionOption, http.StatusOK)
+
+	/*
+		regUser := DefaultUser{
+			ID:          []byte(userFromUsers.Email),
+			Name:        userFromUsers.Username,
+			DisplayName: userFromUsers.Username,
+			Credentials: retrieveUserCredsAsCredentialList(email),
+		}
+
+		options, sessionData, err := webAuthn.BeginLogin(regUser)
+		if err != nil {
+			fmt.Println(err.Error())
+			JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+		}
+
+		LoginChallenge = sessionData.Challenge
+		JSONResponse(w, options, http.StatusOK)
+	*/
 
 }
 
@@ -280,25 +310,6 @@ func FinishLogin(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// convert a []protocol.AuthenticatorTransport to a string for storage
-func joinTransports(transports []protocol.AuthenticatorTransport) string {
-	transportStrings := make([]string, len(transports))
-	for i, transport := range transports {
-		transportStrings[i] = string(transport)
-	}
-	return strings.Join(transportStrings, ",")
-}
-
-// convert a string to a []protocol.AuthenticatorTransport for use in the protocol
-func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
-	transportStrings := strings.Split(transportStr, ",")
-	transports := make([]protocol.AuthenticatorTransport, len(transportStrings))
-	for i, transport := range transportStrings {
-		transports[i] = protocol.AuthenticatorTransport(transport)
-	}
-	return transports
-}
-
 // handle the deletion of a credential
 func DeleteCredentialHandler(w http.ResponseWriter, r *http.Request) {
 	db := database.InitDB()
@@ -335,153 +346,4 @@ func DeleteCredentialHandler(w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	JSONResponse(w, "Credential deleted successfully", http.StatusOK)
 
-}
-
-// handle the printing of the user credentials in the home webpage
-func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
-	email := r.URL.Query().Get("email")
-	db := database.InitDB()
-	//fmt.Println("email:", email)
-
-	// retrieve the user from the database
-	var userFromUsers database.User
-	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
-		fmt.Print("User not found")
-		return
-	}
-	// retrieve the user passkeys from the database
-	var userPasskeys []database.UserPasskey
-	if db.Where("user_id = ?", email).Find(&userPasskeys).Error != nil {
-		fmt.Print("User not found")
-		return
-	}
-
-	type PasskeyEntry struct {
-		CredentialID string `json:"CredentialID"`
-		CreatedAt    string `json:"CreatedAt"`
-		ImageDark    string `json:"ImageDark"`
-		ImageLight   string `json:"ImageLight"`
-		AAGUID       string `json:"AAGUID"`
-		Description  string `json:"Description"`
-		VerMethod    string `json:"VerificationMethod"`
-	}
-
-	var aaguidSchema database.AAGUIDSchema
-	aaguidSchema.Items = database.AAGUIDJsonLoader()
-	if aaguidSchema.Items == nil {
-		fmt.Println("Error loading AAGUID schema")
-		return
-	}
-
-	var passkeyEntries []PasskeyEntry
-	var passkeyEntry PasskeyEntry
-	for _, passkey := range userPasskeys {
-		aaguidItem := database.RetrieveAAGUIDInfo(formatAAGUID(passkey.AAGUID), aaguidSchema)
-		//test if empty
-		if (aaguidItem == database.AAGUIDItem{}) {
-			passkeyEntry.Description = "Unknown"
-			passkeyEntry.ImageDark = "Unknown"
-			passkeyEntry.ImageLight = "Unknown"
-			fmt.Println("AAGUID not found in schema")
-		} else {
-			passkeyEntry.Description = aaguidItem.Name
-			passkeyEntry.ImageDark = aaguidItem.IconDark
-			passkeyEntry.ImageLight = aaguidItem.IconLight
-		}
-		passkeyEntry.CredentialID = base64.RawStdEncoding.EncodeToString(passkey.CredentialID)
-		passkeyEntry.AAGUID = formatAAGUID(passkey.AAGUID)
-		passkeyEntry.VerMethod = "FIDO2"
-		passkeyEntry.CreatedAt = passkey.CreatedAt.Format(time.RFC3339)
-
-		passkeyEntries = append(passkeyEntries, passkeyEntry)
-
-	}
-
-	JSONResponse(w, passkeyEntries, http.StatusOK)
-}
-
-// Retrieve the user credentials from the database as a list of protocol.CredentialDescriptor
-// This is used to populate the user's credentials when registering
-// to avoid registering the same credential twice
-func retrieveUserCredsAsDescriptor(email string) []protocol.CredentialDescriptor {
-	db := database.InitDB()
-
-	var credentialEntries []database.UserPasskey
-	var userCredentials []protocol.CredentialDescriptor
-
-	//get the user from the database
-	if db.Where("user_id = ?", email).Find(&credentialEntries).Error != nil {
-		fmt.Print("User not found")
-		return userCredentials
-	}
-
-	for _, userFromPasskeyUser := range credentialEntries {
-		userCredentials = append(userCredentials, protocol.CredentialDescriptor{
-			Type:            protocol.PublicKeyCredentialType,
-			CredentialID:    userFromPasskeyUser.CredentialID,
-			Transport:       splitTransports(userFromPasskeyUser.Transport),
-			AttestationType: userFromPasskeyUser.AttestationType,
-		})
-	}
-
-	return userCredentials
-
-}
-
-// Retrieve the user credentials from the database as a list of webauthn.Credential
-// This is used to populate the user's credentials when they log in
-func retrieveUserCredsAsCredentialList(email string) []webauthn.Credential {
-	db := database.InitDB()
-	//get the user from the database
-	var credentialEntries []database.UserPasskey
-	var userCredentials []webauthn.Credential
-
-	if db.Where("user_id = ?", email).Find(&credentialEntries).Error != nil {
-		fmt.Print("User not found")
-		return userCredentials
-	}
-
-	for _, userFromPasskeyUser := range credentialEntries {
-		userCredentials = append(userCredentials, webauthn.Credential{
-			ID:        userFromPasskeyUser.CredentialID,
-			PublicKey: userFromPasskeyUser.PublicKey,
-			/*
-				Authenticator: webauthn.Authenticator{
-					AAGUID:     userFromPasskeyUser.AAGUID,
-					SignCount:  userFromPasskeyUser.SignCount,
-					Attachment: protocol.AuthenticatorAttachment(userFromPasskeyUser.Attachment),
-				},
-				AttestationType: userFromPasskeyUser.AttestationType,
-				Transport:       splitTransports(userFromPasskeyUser.Transport),
-				Flags: webauthn.CredentialFlags{
-					UserPresent:    userFromPasskeyUser.UserPresent,
-					UserVerified:   userFromPasskeyUser.BackupEligible,
-					BackupEligible: userFromPasskeyUser.UserVerified,
-					BackupState:    userFromPasskeyUser.BackupState,
-				},
-			*/
-		})
-	}
-
-	return userCredentials
-
-}
-
-// Print the credential to the console
-func credConsoleLogger(c *webauthn.Credential) {
-	fmt.Println("----------------------------------------")
-	fmt.Println("Credential ID:", base64.URLEncoding.EncodeToString(c.ID))
-	fmt.Println("Public Key:", base64.URLEncoding.EncodeToString(c.PublicKey))
-	fmt.Println("Attestation Type:", c.AttestationType)
-	fmt.Println("Transport:", c.Transport)
-	fmt.Println("Flags:")
-	fmt.Println("  User Present:", c.Flags.UserPresent)
-	fmt.Println("  User Verified:", c.Flags.UserVerified)
-	fmt.Println("  Backup Eligible:", c.Flags.BackupEligible)
-	fmt.Println("  Backup State:", c.Flags.BackupState)
-	fmt.Println("Authenticator:")
-	fmt.Println("  AAGUID:", base64.URLEncoding.EncodeToString(c.Authenticator.AAGUID))
-	fmt.Println("  Sign Count:", c.Authenticator.SignCount)
-	fmt.Println("  Attachment:", c.Authenticator.Attachment)
-	fmt.Println("----------------------------------------")
 }

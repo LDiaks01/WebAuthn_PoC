@@ -19,7 +19,7 @@ type User struct {
 type UserPasskey struct {
 	gorm.Model
 	UserID          string
-	CredentialID    []byte
+	CredentialID    string
 	PublicKey       []byte
 	AttestationType string
 	Transport       string
@@ -30,6 +30,16 @@ type UserPasskey struct {
 	AAGUID          []byte `gorm:"type:binary(16)"`
 	SignCount       uint32
 	Attachment      string
+	ClientDataHash  string
+}
+
+type MobilePasskey struct {
+	gorm.Model
+	UserID       string
+	CredentialID string
+	Type         string
+	Transport    string
+	AuthData     string
 }
 
 var (

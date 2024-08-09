@@ -1,0 +1,174 @@
+{
+    "rp": {
+      "name": "Go Webauthn",
+      "id": "localhost"
+    },
+    "user": {
+      "name": "lansana",
+      "displayName": "lansana",
+      "id": "bGRAbGQuY29t"
+    },
+    "challenge": "OxB1pbI6JIXTmvPnOgg1k1W-WjPYWFd-KNjIMbAIMXs",
+    "pubKeyCredParams": [
+      {
+        "type": "public-key",
+        "alg": -7
+      },
+      {
+        "type": "public-key",
+        "alg": -35
+      },
+      {
+        "type": "public-key",
+        "alg": -36
+      },
+      {
+        "type": "public-key",
+        "alg": -257
+      },
+      {
+        "type": "public-key",
+        "alg": -258
+      },
+      {
+        "type": "public-key",
+        "alg": -259
+      },
+      {
+        "type": "public-key",
+        "alg": -37
+      },
+      {
+        "type": "public-key",
+        "alg": -38
+      },
+      {
+        "type": "public-key",
+        "alg": -39
+      },
+      {
+        "type": "public-key",
+        "alg": -8
+      }
+    ],
+    "timeout": 180000,
+    "excludeCredentials": [
+      {
+        "type": "public-key",
+        "id": "vyh7fyug73gRy4467ZIQ8rHxRp3SWwyLF0H2sj8yt7A",
+        "transports": [
+          ""
+        ]
+      }
+    ],
+    "authenticatorSelection": {
+      "requireResidentKey": false,
+      "userVerification": "discouraged"
+    },
+    "attestation": "indirect"
+  }
+
+  {
+    "authenticatorExtensions": "",
+    "clientDataHash": "",
+    "credTypesAndPubKeyAlgs": [
+      [
+        "public-key",
+        -7
+      ],
+      [
+        "public-key",
+        -35
+      ],
+      [
+        "public-key",
+        -36
+      ],
+      [
+        "public-key",
+        -257
+      ],
+      [
+        "public-key",
+        -258
+      ],
+      [
+        "public-key",
+        -259
+      ],
+      [
+        "public-key",
+        -37
+      ],
+      [
+        "public-key",
+        -38
+      ],
+      [
+        "public-key",
+        -39
+      ],
+      [
+        "public-key",
+        -8
+      ]
+    ],
+    "excludeCredentials": [
+      {
+        "type": "public-key",
+        "id": "vyh7fyug73gRy4467ZIQ8rHxRp3SWwyLF0H2sj8yt7A"
+      },
+      {
+        "authData": "Rrf8caJ8S0IWCiaPD8dtbyoOPCz3SMqhHa0SpbWMmRxFAAAAAAAAAAAAAAAAAAAAAAAAAAAAICMpJsFMh29rrDyZPx_WrtLYtDiISIUjv6AWpKit5yrDpQECAyYgASFYILg-QMNjXU1MwhYsi3Iv9THNN4EaH4qr6Qz2mM6mz504IlggMB861guyUbYxM-hxN3Zq4BTH4W0upKWDlcjLy4-401M",
+        "fmt": "packed",
+        "attStmt": {
+          "alg": -7,
+          "sig": "MEUCIF5oMIt0HU701jLm5mhteh7aG3TA2OR5LiDaAC1dplNEAiEA43ERnN7fUJ-mSONAgsP3fzVvmj-kc1GapnGclU0MqZk"
+        }
+      }
+    ],
+    "requireResidentKey": true,
+    "requireUserPresence": true,
+    "requireUserVerification": true,
+    "rp": {
+      "name": "localhost",
+      "id": "Go Webauthn"
+    },
+    "user": {
+      "name": "lansana",
+      "displayName": "lansana",
+      "id": "bGRAbGQuY29t"
+    }
+  }
+  
+
+
+  {
+    "authData": "Rrf8caJ8S0IWCiaPD8dtbyoOPCz3SMqhHa0SpbWMmRxFAAAAAAAAAAAAAAAAAAAAAAAAAAAAICMpJsFMh29rrDyZPx_WrtLYtDiISIUjv6AWpKit5yrDpQECAyYgASFYILg-QMNjXU1MwhYsi3Iv9THNN4EaH4qr6Qz2mM6mz504IlggMB861guyUbYxM-hxN3Zq4BTH4W0upKWDlcjLy4-401M",
+    "fmt": "packed",
+    "attStmt": {
+      "alg": -7,
+      "sig": "MEUCIF5oMIt0HU701jLm5mhteh7aG3TA2OR5LiDaAC1dplNEAiEA43ERnN7fUJ-mSONAgsP3fzVvmj-kc1GapnGclU0MqZk"
+    }
+  }
+
+
+  {clientDataHash: FpmeDTZ4n661RxQdq0HMlk8Qgn2nJ80-UrDRPoc95AM, 
+  rp: {id: localhost, name: localhost}, 
+  user: {id: bGRAbGQuY29t, displayName: lansana, name: lansana}, 
+  requireResidentKey: true, requireUserPresence: false, requireUserVerification: true, 
+  credTypesAndPubKeyAlgs: [[public-key, -7]], excludeCredentials: null}
+
+
+  {rpId: localhost, 
+  clientDataHash: FpmeDTZ4n661RxQdq0HMlk8Qgn2nJ80-UrDRPoc95AM=, requireUserPresence: true, requireUserVerification: false, 
+  allowCredentialDescriptorList: [{type: public-key, id: tcoY086N0s3Ke3wOq51Rwg0jJJOAgwu2xozCZAds4pQ, transports: [internal, ble]}]}
+
+  Assertion: {selected_credential_id: tcoY086N0s3Ke3wOq51Rwg0jJJOAgwu2xozCZAds4pQ, 
+  authenticator_data: SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MFAAAAAQ, 
+  signature: MEUCIAAZEJi01-AatqKSKEWbXxtPEfgbWmzxaWrMXRNWXBHVAiEAmnzPKLjHGejd2uOBZPuzTBUoDeDJf2XtbO7QTtrnz64, 
+  selected_credential_user_handle: bGRAbGQuY29t}
+
+  from db: tcoY086N0s3Ke3wOq51Rwg0jJJOAgwu2xozCZAds4pQ=
+  'SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NFAAAAAAAAAAAAAAAAAAAAAAAAAAAAILXKGNPOjdLNynt8DqudUcINIySTgIMLtsaMwmQHbOKUpQECAyYgASFYIFoHmjmijWmKa8ogYbsflEXE1RD1vuDUSyryk7mSFmBZIlggI94zfdmxp9wul9ulW2HQKwKxgic6CRBIjCFRAZ6gOZQ='
+  'FpmeDTZ4n661RxQdq0HMlk8Qgn2nJ80-UrDRPoc95AM='

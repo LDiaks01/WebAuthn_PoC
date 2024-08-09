@@ -3,8 +3,10 @@ package handlers
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"github.com/LDiaks01/WebAuthn_PoC/database"
 )
 
@@ -22,7 +24,16 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Utilisateur créé avec succès: ", newUser.Email)
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// return a http response with a cookie
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"result": "Account created successfully",
+		"status": "success",
+	})
+
+	//http.Redirect(w, r, "/login", http.StatusSeeOther)
 
 }
 
@@ -43,7 +54,16 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("Utilisateur trouvé: ", user.Email)
-	http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
+
+	// return a http response with a cookie
+	// http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"token":  "SampleToken1234",
+		"status": "success",
+	})
+
 }
 
 func hashPassword(password string) string {
