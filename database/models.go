@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 
+	"os"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -51,7 +53,13 @@ var (
 // to ensure that the database is initiated only once
 func InitDB() *gorm.DB {
 	once.Do(func() {
-		dsn := "root:@tcp(127.0.0.1:3306)/passkeys?charset=utf8mb4&parseTime=True&loc=Local"
+
+		dbHost := os.Getenv("DB_HOST")
+		dbPort := os.Getenv("DB_PORT")
+		dbUser := os.Getenv("DB_USER")
+		dbPass := os.Getenv("DB_PASS")
+		dsn := dbUser + ":" + dbPass + "@tcp(" + dbHost + ":" + dbPort + ")/passkeys?charset=utf8mb4&parseTime=True&loc=Local"
+		//dsn := "root:@tcp(192.168.56.1:3306)/passkeys?charset=utf8mb4&parseTime=True&loc=Local"
 		var err error
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 		if err != nil {
