@@ -11,13 +11,29 @@ import (
 )
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	username := r.FormValue("username")
-	password := r.FormValue("password")
-	email := r.FormValue("email")
-	// hash the password
-	hashStr := hashPassword(password)
+	type RegisterUserBody struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	var userBody RegisterUserBody
+	err := json.NewDecoder(r.Body).Decode(&userBody)
+	// Décoder le JSON à partir du corps de la requête
+	if err != nil {
+		//http.Error(w, "Error decoding JSON content, verify the JSON Format"+err.Error(), http.StatusBadRequest)
+		fmt.Println("Error decoding JSON:", err)
+		JSONResponse(w, "Error decoding JSON content, verify the JSON Format"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if userBody.Email == "" || userBody.Username == "" || userBody.Password == "" {
+		JSONResponse(w, "Missing Fields", http.StatusBadRequest)
+		return
+	}
+
+	hashStr := hashPassword(userBody.Password)
 	db := database.InitDB()
-	newUser := database.User{Email: email, Username: username, Password: hashStr}
+	newUser := database.User{Email: userBody.Email, Username: userBody.Username, Password: hashStr}
 	result := db.Create(&newUser)
 	if result.Error != nil {
 		fmt.Println("Erreur lors de la création de l'utilisateur:", result.Error)

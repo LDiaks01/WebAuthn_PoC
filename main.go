@@ -16,14 +16,14 @@ func main() {
 
 	http.HandleFunc("/register", handlers.RegisterUser)
 	http.HandleFunc("/login", ServeLoginPage)
-	http.HandleFunc("/postLogin", handlers.HandleLogin)
+	http.HandleFunc("/postlogin", handlers.HandleLogin)
 	http.HandleFunc("/home", HomeHandler)
-	http.HandleFunc("/registerPIN", handlers.BeginMobileRegistration)
-	http.HandleFunc("/finishMobileRegister", handlers.FinishMobileRegistration)
-	http.HandleFunc("/beginMobileLogin", handlers.MobileLogin)
-	http.HandleFunc("/finishMobileLogin", handlers.FinishLogin)
-	http.HandleFunc("/getUserCredentials", handlers.GetUserCredentialsHandler)
-	http.HandleFunc("/deleteCredential", handlers.DeleteCredentialHandler)
+	http.HandleFunc("/beginmobileregister", handlers.BeginMobileRegistration)
+	http.HandleFunc("/finishmobileregister", handlers.FinishMobileRegistration)
+	http.HandleFunc("/beginmobilelogin", handlers.BeginMobileLogin)
+	http.HandleFunc("/finishmobilelogin", handlers.FinishMobileLogin)
+	http.HandleFunc("/getusercredentials", handlers.GetUserCredentialsHandler)
+	http.HandleFunc("/deletecredential", handlers.DeleteCredentialHandler)
 	http.ListenAndServe(":8080", nil)
 }
 

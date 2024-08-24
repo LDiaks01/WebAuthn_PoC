@@ -3,6 +3,7 @@ module github.com/LDiaks01/WebAuthn_PoC
 go 1.22.3
 
 require (
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/go-webauthn/webauthn v0.10.2
 	github.com/xeipuuv/gojsonschema v1.2.0
 	gorm.io/driver/mysql v1.5.6
@@ -10,7 +11,9 @@ require (
 )
 
 require (
-	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/go-webauthn/x v0.1.9 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect

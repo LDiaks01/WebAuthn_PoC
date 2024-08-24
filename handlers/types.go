@@ -3,15 +3,15 @@ package handlers
 import "github.com/go-webauthn/webauthn/protocol"
 
 type MobileCredentialCreationOptions struct {
-	AuthenticatorExtensions string                   `json:"authenticatorExtensions"`
-	ClientDataHash          string                   `json:"clientDataHash"`
-	CredTypesAndPubKeyAlgs  []interface{}            `json:"credTypesAndPubKeyAlgs"`
-	ExcludeCredentials      []CredentialDescriptor   `json:"excludeCredentials"`
-	RequireResidentKey      bool                     `json:"requireResidentKey"`
-	RequireUserPresence     bool                     `json:"requireUserPresence"`
-	RequireUserVerification bool                     `json:"requireUserVerification"`
-	RP                      MobileRelyingPartyEntity `json:"rp"`
-	User                    MobileUserEntity         `json:"user"`
+	AuthenticatorExtensions string                          `json:"authenticatorExtensions"`
+	ClientDataHash          string                          `json:"clientDataHash"`
+	CredTypesAndPubKeyAlgs  []interface{}                   `json:"credTypesAndPubKeyAlgs"`
+	ExcludeCredentials      []protocol.CredentialDescriptor `json:"excludeCredentials"`
+	RequireResidentKey      bool                            `json:"requireResidentKey"`
+	RequireUserPresence     bool                            `json:"requireUserPresence"`
+	RequireUserVerification bool                            `json:"requireUserVerification"`
+	RP                      MobileRelyingPartyEntity        `json:"rp"`
+	User                    MobileUserEntity                `json:"user"`
 }
 
 type MobileRelyingPartyEntity struct {
@@ -23,12 +23,6 @@ type MobileUserEntity struct {
 	Name        string      `json:"name"`
 	DisplayName string      `json:"displayName"`
 	ID          interface{} `json:"id"`
-}
-
-type CredentialDescriptor struct {
-	Type       string `json:"type"`
-	ID         string `json:"id"`
-	Transports string `json:"transports"`
 }
 
 type PasskeyEntry struct {
@@ -49,9 +43,31 @@ type GetAssertionOptions struct {
 	AllowCredentialDescriptorList []protocol.CredentialDescriptor `json:"allowCredentialDescriptorList"`
 }
 
-type RegistrationData struct {
-	UserID         string `json:"user_id"`
-	CredentialID   string `json:"credentialId"`
-	AuthData       string `json:"authData"`
-	ClientDataHash string `json:"clientDataHash"`
+type BeginMobileRegistrationData struct {
+	RelyingPartyID   string                          `json:"relyingPartyId"`
+	Challenge        string                          `json:"challenge"`
+	Timeout          int                             `json:"timeout"`
+	UserVerification string                          `json:"userVerification"`
+	AllowCredentials []protocol.CredentialDescriptor `json:"allowCredentials"`
+	Mediation        string                          `json:"mediation"`
 }
+
+type FinishMobileRegistrationData struct {
+	AttestationObject string `json:"attestationObject"`
+	ClientDataJSON    string `json:"clientDataJSON"`
+	ID                string `json:"id"`
+	RawID             string `json:"rawId"`
+	HashCode          string `json:"hashCode"`
+}
+
+
+type MediationType string
+
+// Définir les constantes pour les types de médiation
+const (
+    MediationSilent      MediationType = "silent"
+    MediationPreferred   MediationType = "preferred"
+    MediationConditional MediationType = "conditional"
+    MediationOptional    MediationType = "optional"
+)
+

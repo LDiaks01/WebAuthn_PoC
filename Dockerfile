@@ -12,6 +12,12 @@ RUN go mod download
 # https://docs.docker.com/reference/dockerfile/#copy
 COPY . .
 
+ENV REDIS_HOST=172.17.152.3
+ENV REDIS_PORT=6379
+ENV DB_HOST=172.17.152.3
+ENV DB_PORT=3306
+ENV DB_USER=ldiaks01
+ENV DB_PASS=aD7sgT212#^#
 # Build
 RUN go build -o go_server
 # Compiler l'application

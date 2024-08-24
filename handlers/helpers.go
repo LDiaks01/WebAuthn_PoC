@@ -12,6 +12,7 @@ import (
 
 	"github.com/LDiaks01/WebAuthn_PoC/database"
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/google/uuid"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 )
@@ -64,7 +65,7 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 	var passkeyEntries []PasskeyEntry
 	var passkeyEntry PasskeyEntry
 	for _, passkey := range userPasskeys {
-		aaguidItem := database.RetrieveAAGUIDInfo(formatAAGUID(passkey.AAGUID), aaguidSchema)
+		aaguidItem := database.RetrieveAAGUIDInfo(passkey.AAGUID, aaguidSchema)
 		//test if empty
 		if (aaguidItem == database.AAGUIDItem{}) {
 			passkeyEntry.Description = "Unknown"
@@ -78,7 +79,7 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		//passkeyEntry.CredentialID = base64.RawStdEncoding.EncodeToString(passkey.CredentialID)
 		passkeyEntry.CredentialID = passkey.CredentialID
-		passkeyEntry.AAGUID = formatAAGUID(passkey.AAGUID)
+		passkeyEntry.AAGUID = passkey.AAGUID
 		passkeyEntry.VerMethod = "FIDO2"
 		passkeyEntry.CreatedAt = passkey.CreatedAt.Format(time.RFC3339)
 
@@ -106,7 +107,7 @@ func retrieveUserCredsAsDescriptor(email string) []protocol.CredentialDescriptor
 
 	for _, userFromPasskeyUser := range credentialEntries {
 
-		credID, err := base64.RawURLEncoding.DecodeString(userFromPasskeyUser.CredentialID)
+		credID, err := base64.URLEncoding.DecodeString(userFromPasskeyUser.CredentialID)
 		if err != nil {
 			return userCredentials
 		}
@@ -146,7 +147,8 @@ func retrieveUserCredsAsMobileDescriptor(email string) []protocol.CredentialDesc
 		userCredentials = append(userCredentials, protocol.CredentialDescriptor{
 			Type:         protocol.PublicKeyCredentialType,
 			CredentialID: credID,
-			Transport:    []protocol.AuthenticatorTransport{protocol.AuthenticatorTransport("internal"), protocol.AuthenticatorTransport("ble")},
+			Transport:    splitTransports(userFromPasskeyUser.Transport),
+			//[]protocol.AuthenticatorTransport{protocol.AuthenticatorTransport("internal"), protocol.AuthenticatorTransport("ble")},
 			//AttestationType: userFromPasskeyUser.AttestationType,
 		})
 	}
@@ -169,95 +171,49 @@ func retrieveUserCredsAsCredentialList(email string) []webauthn.Credential {
 	}
 
 	for _, userFromPasskeyUser := range credentialEntries {
-		credID, err := base64.RawURLEncoding.DecodeString(userFromPasskeyUser.CredentialID)
+		credID, err := base64.URLEncoding.DecodeString(userFromPasskeyUser.CredentialID)
 		if err != nil {
+			fmt.Println("Error decoding credential ID:", err)
+			return userCredentials
+		}
+
+		publicKey, err := base64.URLEncoding.DecodeString(userFromPasskeyUser.PublicKey)
+		if err != nil {
+			// handle the error, e.g. log or return an error response
+			fmt.Println("Error decoding public key:", err)
+			return userCredentials
+		}
+
+		aaguid, err := base64.URLEncoding.DecodeString(userFromPasskeyUser.AAGUID)
+		if err != nil {
+			// handle the error, e.g. log or return an error response
+			fmt.Println("Error decoding public key:", err)
 			return userCredentials
 		}
 
 		userCredentials = append(userCredentials, webauthn.Credential{
-			ID:        credID,
-			PublicKey: userFromPasskeyUser.PublicKey,
-			/*
-				Authenticator: webauthn.Authenticator{
-					AAGUID:     userFromPasskeyUser.AAGUID,
-					SignCount:  userFromPasskeyUser.SignCount,
-					Attachment: protocol.AuthenticatorAttachment(userFromPasskeyUser.Attachment),
-				},
-				AttestationType: userFromPasskeyUser.AttestationType,
-				Transport:       splitTransports(userFromPasskeyUser.Transport),
-				Flags: webauthn.CredentialFlags{
-					UserPresent:    userFromPasskeyUser.UserPresent,
-					UserVerified:   userFromPasskeyUser.BackupEligible,
-					BackupEligible: userFromPasskeyUser.UserVerified,
-					BackupState:    userFromPasskeyUser.BackupState,
-				},
-			*/
+			ID: credID,
+
+			PublicKey: publicKey,
+
+			Authenticator: webauthn.Authenticator{
+				AAGUID:     aaguid,
+				SignCount:  userFromPasskeyUser.SignCount,
+				Attachment: protocol.AuthenticatorAttachment(userFromPasskeyUser.Attachment),
+			},
+			AttestationType: userFromPasskeyUser.AttestationType,
+			Transport:       splitTransports(userFromPasskeyUser.Transport),
+			Flags: webauthn.CredentialFlags{
+				UserPresent:    userFromPasskeyUser.UserPresent,
+				UserVerified:   userFromPasskeyUser.BackupEligible,
+				BackupEligible: userFromPasskeyUser.UserVerified,
+				BackupState:    userFromPasskeyUser.BackupState,
+			},
 		})
 	}
 
 	return userCredentials
 
-}
-
-func mobileCredentialOptionBuilder(option protocol.PublicKeyCredentialCreationOptions) MobileCredentialCreationOptions {
-
-	// surround by a try catch
-	// if the option is not valid, return an error
-
-	var credTypes []interface{}
-
-	/*
-		for _, param := range option.Parameters {
-			credTypes = append(credTypes, []interface{}{param.Type, param.Algorithm})
-
-		}
-	*/
-
-	// we will definitively use the -7
-	credTypes = append(credTypes, []interface{}{"public-key", -7})
-
-	var excludeCredentials []CredentialDescriptor
-	for _, cred := range option.CredentialExcludeList {
-		excludeCredentials = append(excludeCredentials, CredentialDescriptor{
-			Type:       "public-key",
-			ID:         base64.URLEncoding.EncodeToString(cred.CredentialID),
-			Transports: "internal",
-		})
-	}
-
-	var clientDataHash = SerializeClientData("webauthn.create", base64.URLEncoding.EncodeToString(option.Challenge), option.RelyingParty.ID, false, nil)
-
-	//fmt.Println("Client Data:", testString)
-
-	mobileOptions := MobileCredentialCreationOptions{
-		AuthenticatorExtensions: "",
-		ClientDataHash:          clientDataHash,
-		CredTypesAndPubKeyAlgs:  credTypes,
-		ExcludeCredentials:      excludeCredentials,
-		RequireResidentKey:      true,
-		RequireUserPresence:     false,
-		RequireUserVerification: true,
-		RP: MobileRelyingPartyEntity{
-			Name: option.RelyingParty.ID,
-			ID:   option.RelyingParty.ID,
-		},
-
-		User: MobileUserEntity{
-			Name:        option.User.CredentialEntity.Name,
-			DisplayName: option.User.DisplayName,
-			ID:          option.User.ID,
-		},
-	}
-
-	/*jsonData, err := json.MarshalIndent(mobileOptions, "", "  ")
-	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-
-	}
-
-	fmt.Println(string(jsonData))
-	*/
-	return mobileOptions
 }
 
 func CCDToString(value string) []byte {
@@ -341,4 +297,9 @@ func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
 		transports[i] = protocol.AuthenticatorTransport(transport)
 	}
 	return transports
+}
+
+func GenerateUUID() string {
+	id := uuid.New()
+	return id.String()
 }
