@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/LDiaks01/WebAuthn_PoC/database"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -17,6 +20,10 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := database.InitDB()
+	rdb := database.InitRedis()
+
+	ctx, cancelContext := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelContext()
 
 	// we get the email from the request JSON body
 	type RequestEmailBody struct {
@@ -65,6 +72,31 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 
 	LoginChallenge = sessionData.Challenge
 	LoginUserEmail = emailBody.Email
+
+	var tempLogData = []string{emailBody.Email, string(sessionData.Challenge)}
+	tempLogDataSerialized, err := json.Marshal(tempLogData)
+	if err != nil {
+		log.Fatalf("could not marshal data: %v", err)
+		JSONResponse(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	tempLogDataKey := GenerateUUID()
+	_, err = rdb.Set(ctx, tempLogDataKey, tempLogDataSerialized, database.RedisExpirationDuration).Result()
+	if err != nil {
+		fmt.Println("Error storing registration data in redis:", err)
+		JSONResponse(w, "An error occured", http.StatusInternalServerError)
+		return
+	}
+
+	// add the key to the http cookie
+	cookie := http.Cookie{
+		Name:     "logDataKey",
+		Value:    tempLogDataKey,
+		HttpOnly: true,
+		//SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, &cookie)
 
 	optionsToClient := BeginMobileRegistrationData{
 		RelyingPartyID:   webAuthn.Config.RPID,
