@@ -118,6 +118,42 @@ func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := database.InitDB()
+	rdb := database.InitRedis()
+	// get the regDataKey from the cookie
+
+	cookie, err := r.Cookie("logDataKey")
+	if err != nil {
+		fmt.Println("Error getting the cookie:", err)
+		JSONResponse(w, "Error getting the cookie key "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// initialise the context and get the data from the redis cache
+	ctx, cancelContext := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelContext()
+	tempLogDataKey := cookie.Value
+	tempLogDataSerialized, err := rdb.Get(ctx, tempLogDataKey).Result()
+	if err != nil {
+		fmt.Println("Error getting the data from redis:", err)
+		JSONResponse(w, "An error occured, please check the cookie key "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// unmarshal the data
+	var tempRegData []string
+	err = json.Unmarshal([]byte(tempLogDataSerialized), &tempRegData)
+	if err != nil {
+		fmt.Println("Error unmarshalling the data:", err)
+		JSONResponse(w, "An error occured when deserializing the datas"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	loginEmail := tempRegData[0]
+	loginChallenge := tempRegData[1]
+	fmt.Println("Email:", loginEmail)
+	fmt.Println("Challenge:", LoginChallenge)
+	LoginChallenge = loginChallenge
+	LoginUserEmail = loginEmail
 
 	var userFromUsers database.User
 	if db.Where("email = ?", LoginUserEmail).First(&userFromUsers).Error != nil {
