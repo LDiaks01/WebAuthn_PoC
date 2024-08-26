@@ -68,10 +68,8 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err.Error())
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	LoginChallenge = sessionData.Challenge
-	LoginUserEmail = emailBody.Email
 
 	var tempLogData = []string{emailBody.Email, string(sessionData.Challenge)}
 	tempLogDataSerialized, err := json.Marshal(tempLogData)
@@ -112,11 +110,6 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
-	if LoginUserEmail == "" {
-		fmt.Println("Error : Follow the required steps : The user email is empty, so no beginning of login")
-		JSONResponse(w, "Error : Follow the required steps", http.StatusBadRequest)
-	}
-
 	db := database.InitDB()
 	rdb := database.InitRedis()
 	// get the regDataKey from the cookie
@@ -151,33 +144,31 @@ func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
 	loginEmail := tempRegData[0]
 	loginChallenge := tempRegData[1]
 	fmt.Println("Email:", loginEmail)
-	fmt.Println("Challenge:", LoginChallenge)
-	LoginChallenge = loginChallenge
-	LoginUserEmail = loginEmail
+	fmt.Println("Challenge:", loginChallenge)
 
 	var userFromUsers database.User
-	if db.Where("email = ?", LoginUserEmail).First(&userFromUsers).Error != nil {
+	if db.Where("email = ?", loginEmail).First(&userFromUsers).Error != nil {
 		fmt.Print("User not found")
 		return
 	}
 
 	var db_passkeys []database.UserPasskey
-	if db.Where("user_id = ?", LoginUserEmail).Find(&db_passkeys).Error != nil {
+	if db.Where("user_id = ?", loginEmail).Find(&db_passkeys).Error != nil {
 		fmt.Print("User not found")
 		return
 	}
 
 	regUser := DefaultUser{
-		ID:          []byte(LoginUserEmail),
+		ID:          []byte(loginEmail),
 		Name:        userFromUsers.Username,
 		DisplayName: userFromUsers.Username,
-		Credentials: retrieveUserCredsAsCredentialList(LoginUserEmail),
+		Credentials: retrieveUserCredsAsCredentialList(loginEmail),
 	}
 
 	// create a session data object and fill it with the challenge from the begin login
 	loginSessionData := webauthn.SessionData{
-		Challenge: LoginChallenge,
-		UserID:    []byte(LoginUserEmail),
+		Challenge: loginChallenge,
+		UserID:    []byte(loginEmail),
 	}
 
 	credential, err := webAuthn.FinishLogin(regUser, loginSessionData, r)
@@ -189,14 +180,34 @@ func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	print("Login Success : ", base64.URLEncoding.EncodeToString(credential.PublicKey), "\n")
+	// increase the sign count and update the last authenticated time
+	// Find the credential
+	var credentialFromDB database.UserPasskey
+	if err := db.Where("credential_id = ?", base64.URLEncoding.EncodeToString(credential.ID)).First(&credentialFromDB).Error; err != nil {
+		fmt.Println("Error finding the credential:", err)
+		JSONResponse(w, "Error finding the credential", http.StatusInternalServerError)
+		return
+	}
+	updateFields := database.UserPasskey{
+		SignCount:           credentialFromDB.SignCount + 1,
+		LastAuthenticatedAt: time.Now(),
+	}
+	if err := db.Model(&database.UserPasskey{}).Where("id = ?", credentialFromDB.CredentialID).Updates(updateFields).Error; err != nil {
+		fmt.Println("Error updating the sign count:", err)
+		JSONResponse(w, "Error updating the sign count, an internal issue occured", http.StatusInternalServerError)
+		return
+	}
+
+	print("Login Success : ", base64.URLEncoding.EncodeToString(credential.PublicKey), credential.Authenticator.SignCount, "\n")
 
 	//create a json entry that contains the username and email
 	userResponse := struct {
 		Email    string `json:"email"`
 		Username string `json:"username"`
+		Status   string `json:"status"`
 	}{Email: userFromUsers.Email,
 		Username: userFromUsers.Username,
+		Status:   "Login success",
 	}
 
 	//w.Header().Set("Content-Type", "application/json")

@@ -19,7 +19,9 @@ import (
 func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	if webAuthn, err = webauthn.New(wconfig); err != nil {
 		//fmt.Println(err)
+		fmt.Println(err)
 		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	db := database.InitDB()
@@ -72,14 +74,9 @@ func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(err)
-
-		JSONResponse(w, "Error creating WebAuthn"+err.Error(), http.StatusInternalServerError)
+		JSONResponse(w, "Error during registration : "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	// Those two variables are used to store the challenge and the email of the user
-	// between the Begin and Finish registration, in prod, they can be in a redis cache
-	RegistrationChallenge = string(session.Challenge)
-	RegistrationUserEmail = emailBody.Email
 
 	//create a list of string contains the email and challenge
 	//to store in the redis cache
@@ -149,26 +146,18 @@ func FinishMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	registrationChallenge := tempRegData[1]
 	fmt.Println("Email:", registrationEmail)
 	fmt.Println("Challenge:", registrationChallenge)
-	RegistrationChallenge = registrationChallenge
-	RegistrationUserEmail = registrationEmail
 
-	if RegistrationUserEmail == "" {
-		fmt.Println("Error : Follow the required steps : The user email is empty, so no beginning of registration")
-		JSONResponse(w, "Error : Follow the required steps", http.StatusBadRequest)
-	}
-
-	fmt.Println("Last email:", RegistrationUserEmail)
 	var userFromUsers database.User
-	if db.Where("email = ?", RegistrationUserEmail).First(&userFromUsers).Error != nil {
+	if db.Where("email = ?", registrationEmail).First(&userFromUsers).Error != nil {
 		fmt.Print("User not found")
 		JSONResponse(w, "User not found", http.StatusBadRequest)
 		return
 	}
 
 	regSessionData := webauthn.SessionData{
-		Challenge:            RegistrationChallenge,
-		UserID:               []byte(RegistrationUserEmail), //
-		AllowedCredentialIDs: [][]byte{},                    // Vide pour cet exemple
+		Challenge:            registrationChallenge,
+		UserID:               []byte(registrationEmail), //
+		AllowedCredentialIDs: [][]byte{},                // Vide pour cet exemple
 		Expires:              time.Date(0001, time.January, 1, 0, 0, 0, 0, time.UTC),
 		UserVerification:     protocol.VerificationPreferred,
 	}
@@ -193,29 +182,21 @@ func FinishMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("User ID:", base64.URLEncoding.EncodeToString(regUser.ID))
 
 	newPassKeyEntry := database.UserPasskey{
-		UserID:          RegistrationUserEmail,
-		PublicKey:       base64.URLEncoding.EncodeToString(c.PublicKey),
-		CredentialID:    base64.URLEncoding.EncodeToString(c.ID),
-		AttestationType: c.AttestationType,
-		Transport:       joinTransports(c.Transport),
-		UserPresent:     c.Flags.UserPresent,
-		UserVerified:    c.Flags.UserVerified,
-		BackupEligible:  c.Flags.BackupEligible,
-		BackupState:     c.Flags.BackupState,
-		AAGUID:          base64.URLEncoding.EncodeToString(c.Authenticator.AAGUID),
-		SignCount:       c.Authenticator.SignCount,
-		Attachment:      string(c.Authenticator.Attachment),
+		UserID:              registrationEmail,
+		PublicKey:           base64.URLEncoding.EncodeToString(c.PublicKey),
+		CredentialID:        base64.URLEncoding.EncodeToString(c.ID),
+		AttestationType:     c.AttestationType,
+		Transport:           joinTransports(c.Transport),
+		UserPresent:         c.Flags.UserPresent,
+		UserVerified:        c.Flags.UserVerified,
+		BackupEligible:      c.Flags.BackupEligible,
+		BackupState:         c.Flags.BackupState,
+		AAGUID:              base64.URLEncoding.EncodeToString(c.Authenticator.AAGUID),
+		SignCount:           c.Authenticator.SignCount,
+		Attachment:          string(c.Authenticator.Attachment),
+		LastAuthenticatedAt: time.Now(),
 	}
 	//then we save the credential in the database,
-	// the obligatories are just pb_key, user_id, credential_id,
-	// the rest is optional
-	/*newPassKeyEntry := database.UserPasskey{
-		UserID:         data.UserID,
-		CredentialID:   data.CredentialID,
-		Attachment:     data.AuthData,
-		ClientDataHash: data.ClientDataHash,
-	}
-	*/
 	errv := db.Create(&newPassKeyEntry)
 	if errv.Error != nil {
 		fmt.Println("Error creating passkey entry: ", errv.Error)

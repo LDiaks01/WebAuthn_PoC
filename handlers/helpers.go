@@ -303,3 +303,10 @@ func GenerateUUID() string {
 	id := uuid.New()
 	return id.String()
 }
+
+// Delete a user credential from the database
+func DeleteUserCredential(w http.ResponseWriter, r *http.Request) {
+
+	// get the credential ID from the request
+	
+}

@@ -22,19 +22,19 @@ type User struct {
 
 type UserPasskey struct {
 	gorm.Model
-	UserID          string // the email of the user
-	CredentialID    string // base64urlEncoded
-	PublicKey       string // base64urlEncoded
-	AttestationType string
-	Transport       string
-	UserPresent     bool
-	UserVerified    bool
-	BackupEligible  bool
-	BackupState     bool
-	AAGUID          string `gorm:"type:varchar(255)"` // base64urlEncoded
-	SignCount       uint32
-	Attachment      string
-	ClientDataHash  string
+	UserID              string // the email of the user
+	CredentialID        string // base64urlEncoded
+	PublicKey           string // base64urlEncoded
+	AttestationType     string
+	Transport           string
+	UserPresent         bool
+	UserVerified        bool
+	BackupEligible      bool
+	BackupState         bool
+	AAGUID              string `gorm:"type:varchar(255)"` // base64urlEncoded
+	SignCount           uint32
+	Attachment          string
+	LastAuthenticatedAt time.Time
 }
 
 type MobilePasskey struct {
@@ -103,8 +103,7 @@ func InitRedis() *redis.Client {
 		redisClient = redis.NewClient(&redis.Options{
 			Addr: redisAddr,
 		})
-		
-		fmt.Print("Connected to Redis ", redisAddr)
+
 		// Créez un contexte avec un délai d'attente pour tester la connexion
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
@@ -114,6 +113,8 @@ func InitRedis() *redis.Client {
 		if err != nil {
 			log.Fatalf("could not connect to Redis: %v", err)
 		}
+
+		fmt.Print("Connected to Redis ", redisAddr, "\n")
 	})
 
 	//fmt.Println("Connected to Redis!")

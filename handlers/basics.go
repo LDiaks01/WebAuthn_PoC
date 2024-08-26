@@ -31,10 +31,20 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashStr := hashPassword(userBody.Password)
 	db := database.InitDB()
+
+	//first verify if the user already exists
+	var user database.User
+	result := db.Where("email = ?", userBody.Email).First(&user)
+	if result.Error == nil {
+		fmt.Println("Utilisateur déjà existant: ", user.Email)
+		JSONResponse(w, "User already exists", http.StatusBadRequest)
+		return
+	}
+	hashStr := hashPassword(userBody.Password)
+
 	newUser := database.User{Email: userBody.Email, Username: userBody.Username, Password: hashStr}
-	result := db.Create(&newUser)
+	result = db.Create(&newUser)
 	if result.Error != nil {
 		fmt.Println("Erreur lors de la création de l'utilisateur:", result.Error)
 		return

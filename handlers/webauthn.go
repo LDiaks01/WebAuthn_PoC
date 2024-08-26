@@ -20,7 +20,8 @@ var wconfig = &webauthn.Config{
 	RPID:          "passkey.hata.io",           // Generally the FQDN for your site
 	RPOrigins: []string{"passkey.hata.io", "passkey.hata.io/", "https://passkey.hata.io",
 		"https://passkey.hata.io/", "http://passkey.hata.io", "http://passkey.hata.io/",
-		"android:apk-key-hash:FkvknJhzzwNqZxUMroi0lNNKcaJYvyb7uF8TAnZz3Iw"}, // The origin URLs allowed for WebAuthn requests
+		"android:apk-key-hash:LNbiYblBNnGCy6kYW99g8ZDt0zgV2Em8igUYBd77QrE=",
+		"android:apk-key-hash:LNbiYblBNnGCy6kYW99g8ZDt0zgV2Em8igUYBd77QrE"}, // The origin URLs allowed for WebAuthn requests
 	AttestationPreference: protocol.PreferIndirectAttestation,
 	// Timeout values for the registration and authentication processes
 	Timeouts: webauthn.TimeoutsConfig{
@@ -51,12 +52,6 @@ var (
 	err      error
 )
 
-// the two challenges need to persist between the two handlers
-var RegistrationChallenge string
-var LoginChallenge string
-var RegistrationUserEmail string
-var LoginUserEmail string
-
 // function that return a JSON response
 func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 	dj, err := json.Marshal(data)
@@ -64,7 +59,8 @@ func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 		http.Error(w, "Error creating JSON response", http.StatusInternalServerError)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	//w.WriteHeader(status)
+
+	w.WriteHeader(status)
 	fmt.Fprintf(w, "%s", dj)
 }
 
