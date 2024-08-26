@@ -15,8 +15,7 @@ The repository consists of two branches:
 ### `mobile` Branch
 
 - **Mobile Passkeys**: Focuses on mobile passkeys and contains only the RP server part.
-- This branch implement the necessary APIs to work as an RP server which works with the Flutter package provided by Corbado Auth ([Corbado Passkeys](https://pub.dev/packages/passkeys)) and all other packages that follows the WebAuthn Specs.
-- ([WebAuthn Specs](https://www.w3.org/TR/webauthn-2/))
+- This branch implement the necessary APIs to work as an RP server which works with the Flutter package provided by Corbado Auth ([Corbado Passkeys](https://pub.dev/packages/passkeys)) and all other packages that follows the WebAuthn Specs ([WebAuthn Specs](https://www.w3.org/TR/webauthn-2/))
 - The Corbado Package have no open-source rp Server yet, so this can serve as well.
   
 ## Project Background
