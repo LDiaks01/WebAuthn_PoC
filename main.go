@@ -22,8 +22,9 @@ func main() {
 	http.HandleFunc("/finishmobileregister", handlers.FinishMobileRegistration)
 	http.HandleFunc("/beginmobilelogin", handlers.BeginMobileLogin)
 	http.HandleFunc("/finishmobilelogin", handlers.FinishMobileLogin)
-	http.HandleFunc("/getusercredentials", handlers.GetUserCredentialsHandler)
-	http.HandleFunc("/deletecredential", handlers.DeleteCredentialHandler)
+	http.HandleFunc("/getcredentials", handlers.GetUserCredentials)
+	http.HandleFunc("/getprettycredentials", handlers.GetPrettyUserCredentials)
+	http.HandleFunc("/deletecredential", handlers.DeleteUserCredential)
 	http.ListenAndServe(":8080", nil)
 }
 

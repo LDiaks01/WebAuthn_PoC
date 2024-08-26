@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -37,21 +37,35 @@ func credConsoleLogger(c *webauthn.Credential) {
 }
 
 // handle the printing of the user credentials in the home webpage
-func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
-	email := r.URL.Query().Get("email")
+func GetPrettyUserCredentials(w http.ResponseWriter, r *http.Request) {
+
 	db := database.InitDB()
-	//fmt.Println("email:", email)
+
+	type RequestEmailBody struct {
+		Email string `json:"email"`
+	}
+	var emailBody RequestEmailBody
+
+	err := json.NewDecoder(r.Body).Decode(&emailBody)
+	// Décoder le JSON à partir du corps de la requête
+	if err != nil {
+		log.Println("Error decoding JSON : ", err)
+		JSONResponse(w, "Error decoding JSON content, verify the JSON Format "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// retrieve the user from the database
 	var userFromUsers database.User
-	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+	if db.Where("email = ?", emailBody.Email).First(&userFromUsers).Error != nil {
 		fmt.Print("User not found")
+		JSONResponse(w, "Email not found", http.StatusBadRequest)
 		return
 	}
 	// retrieve the user passkeys from the database
 	var userPasskeys []database.UserPasskey
-	if db.Where("user_id = ?", email).Find(&userPasskeys).Error != nil {
+	if db.Where("user_id = ?", emailBody.Email).Find(&userPasskeys).Error != nil {
 		fmt.Print("User not found")
+		JSONResponse(w, "Email Have No Passkey", http.StatusBadRequest)
 		return
 	}
 
@@ -62,10 +76,11 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var passkeyEntries []PasskeyEntry
-	var passkeyEntry PasskeyEntry
+	var passkeyEntries []PrettyPasskeyEntry
+	var passkeyEntry PrettyPasskeyEntry
 	for _, passkey := range userPasskeys {
-		aaguidItem := database.RetrieveAAGUIDInfo(passkey.AAGUID, aaguidSchema)
+		aaguidFormated := formatAAGUID(passkey.AAGUID)
+		aaguidItem := database.RetrieveAAGUIDInfo(aaguidFormated, aaguidSchema)
 		//test if empty
 		if (aaguidItem == database.AAGUIDItem{}) {
 			passkeyEntry.Description = "Unknown"
@@ -79,12 +94,19 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		//passkeyEntry.CredentialID = base64.RawStdEncoding.EncodeToString(passkey.CredentialID)
 		passkeyEntry.CredentialID = passkey.CredentialID
-		passkeyEntry.AAGUID = passkey.AAGUID
+		passkeyEntry.AAGUID = aaguidFormated
 		passkeyEntry.VerMethod = "FIDO2"
 		passkeyEntry.CreatedAt = passkey.CreatedAt.Format(time.RFC3339)
+		passkeyEntry.LastAuthenticatedAt = passkey.LastAuthenticatedAt.Format(time.RFC3339)
 
 		passkeyEntries = append(passkeyEntries, passkeyEntry)
 
+	}
+
+	//test if empty
+	if len(passkeyEntries) == 0 {
+		JSONResponse(w, "No Passkey Found", http.StatusBadRequest)
+		return
 	}
 
 	JSONResponse(w, passkeyEntries, http.StatusOK)
@@ -93,38 +115,9 @@ func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 // Retrieve the user credentials from the database as a list of protocol.CredentialDescriptor
 // This is used to populate the user's credentials when registering
 // to avoid registering the same credential twice
-func retrieveUserCredsAsDescriptor(email string) []protocol.CredentialDescriptor {
-	db := database.InitDB()
 
-	var credentialEntries []database.UserPasskey
-	var userCredentials []protocol.CredentialDescriptor
-
-	//get the user from the database
-	if db.Where("user_id = ?", email).Find(&credentialEntries).Error != nil {
-		fmt.Print("User not found")
-		return userCredentials
-	}
-
-	for _, userFromPasskeyUser := range credentialEntries {
-
-		credID, err := base64.URLEncoding.DecodeString(userFromPasskeyUser.CredentialID)
-		if err != nil {
-			return userCredentials
-		}
-
-		userCredentials = append(userCredentials, protocol.CredentialDescriptor{
-			Type:            protocol.PublicKeyCredentialType,
-			CredentialID:    credID,
-			Transport:       splitTransports(userFromPasskeyUser.Transport),
-			AttestationType: userFromPasskeyUser.AttestationType,
-		})
-	}
-
-	return userCredentials
-
-}
-
-func retrieveUserCredsAsMobileDescriptor(email string) []protocol.CredentialDescriptor {
+// Retrieve all the creds for a user
+func retrieveUserCredsAsCredDescriptorList(email string) []protocol.CredentialDescriptor {
 	db := database.InitDB()
 
 	var credentialEntries []database.UserPasskey
@@ -149,7 +142,7 @@ func retrieveUserCredsAsMobileDescriptor(email string) []protocol.CredentialDesc
 			CredentialID: credID,
 			Transport:    splitTransports(userFromPasskeyUser.Transport),
 			//[]protocol.AuthenticatorTransport{protocol.AuthenticatorTransport("internal"), protocol.AuthenticatorTransport("ble")},
-			//AttestationType: userFromPasskeyUser.AttestationType,
+			AttestationType: userFromPasskeyUser.AttestationType,
 		})
 	}
 
@@ -216,66 +209,16 @@ func retrieveUserCredsAsCredentialList(email string) []webauthn.Credential {
 
 }
 
-func CCDToString(value string) []byte {
-	var encoded bytes.Buffer
-	encoded.WriteByte('"')
-
-	for _, r := range value {
-		if r == '"' {
-			encoded.WriteString(`\"`)
-		} else if r == '\\' {
-			encoded.WriteString(`\\`)
-		} else if r < 0x20 || r == 0x7F {
-			// Escape non-printable ASCII characters
-			encoded.WriteString(fmt.Sprintf(`\u%04x`, r))
-		} else if r > 0x7F && r < 0xA0 {
-			// Escape non-printable non-ASCII characters
-			encoded.WriteString(fmt.Sprintf(`\u%04x`, r))
-		} else {
-			// Directly append printable characters
-			encoded.WriteRune(r)
-		}
-	}
-	encoded.WriteByte('"')
-	return encoded.Bytes()
-}
-
-func SerializeClientData(typeParam, challenge, origin string, crossOrigin bool, remainingFields map[string]interface{}) string {
-	var result bytes.Buffer
-
-	// Append initial parts
-	result.WriteString(`{"type":`)
-	result.Write(CCDToString(typeParam))
-	result.WriteString(`,"challenge":`)
-	result.Write(CCDToString(challenge))
-	result.WriteString(`,"origin":`)
-	result.Write(CCDToString(origin))
-	result.WriteString(`,"crossOrigin":`)
-
-	// Handle crossOrigin
-	if !crossOrigin {
-		result.WriteString("false")
-	} else {
-		result.WriteString("true")
-	}
-	result.WriteString("}")
-	// Remove the specified fields from remainingFields
-	// then, SHA256 the result
-	hasher := sha256.New()
-	hasher.Write(result.Bytes())
-	hash := hasher.Sum(nil)
-	b64format := base64.StdEncoding.EncodeToString(hash)
-	//print("b64urlformat:", b64format)
-	//hashStr := hex.EncodeToString(hash)
-	//shortHashStr := hashStr[:32]
-	// return the first 32 bytes of the hash as a hex string
-	return b64format
-}
-
 // function that take the aaguid and retun the formatted UUID
 // then the return can be used to search the AAGUID in the JSON schema
-func formatAAGUID(aaguid []byte) string {
-	uuidHex := hex.EncodeToString(aaguid)
+func formatAAGUID(aaguid string) string {
+	//decode from base64url
+	aaguidDecoded, err := base64.URLEncoding.DecodeString(aaguid)
+	if err != nil {
+		fmt.Println("Error decoding AAGUID:", err)
+		return ""
+	}
+	uuidHex := hex.EncodeToString(aaguidDecoded)
 	return fmt.Sprintf("%s-%s-%s-%s-%s", uuidHex[0:8], uuidHex[8:12], uuidHex[12:16], uuidHex[16:20], uuidHex[20:])
 
 }
@@ -302,11 +245,4 @@ func splitTransports(transportStr string) []protocol.AuthenticatorTransport {
 func GenerateUUID() string {
 	id := uuid.New()
 	return id.String()
-}
-
-// Delete a user credential from the database
-func DeleteUserCredential(w http.ResponseWriter, r *http.Request) {
-
-	// get the credential ID from the request
-	
 }

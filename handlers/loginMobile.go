@@ -11,6 +11,7 @@ import (
 
 	"github.com/LDiaks01/WebAuthn_PoC/database"
 	"github.com/go-webauthn/webauthn/webauthn"
+	"gorm.io/gorm"
 )
 
 func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +63,7 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 		Credentials: credentialListForBeginLogin,
 	}
 
-	credentialListForClient := retrieveUserCredsAsMobileDescriptor(emailBody.Email)
+	credentialListForClient := retrieveUserCredsAsCredDescriptorList(emailBody.Email)
 
 	options, sessionData, err := webAuthn.BeginLogin(regUser)
 	if err != nil {
@@ -74,7 +75,7 @@ func BeginMobileLogin(w http.ResponseWriter, r *http.Request) {
 	var tempLogData = []string{emailBody.Email, string(sessionData.Challenge)}
 	tempLogDataSerialized, err := json.Marshal(tempLogData)
 	if err != nil {
-		log.Fatalf("could not marshal data: %v", err)
+		log.Println("Could not marshal data: ", err)
 		JSONResponse(w, "An error occured", http.StatusInternalServerError)
 		return
 	}
@@ -214,5 +215,73 @@ func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
 	//json.NewEncoder(w).Encode(userResponse)
 	//http.Redirect(w, r, "/home?email="+userFromUsers.Email+"&username="+userFromUsers.Username, http.StatusSeeOther)
 	JSONResponse(w, userResponse, http.StatusOK)
+
+}
+
+// handler for get the user credentials as a list of Credential
+func GetUserCredentials(w http.ResponseWriter, r *http.Request) {
+
+	// get the email from the json request
+	type RequestEmailBody struct {
+		Email string `json:"email"`
+	}
+	var emailBody RequestEmailBody
+
+	err := json.NewDecoder(r.Body).Decode(&emailBody)
+	// Décoder le JSON à partir du corps de la requête
+	if err != nil {
+		log.Println("Error decoding JSON : ", err)
+		JSONResponse(w, "Error decoding JSON content, verify the JSON Format "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	credentialList := retrieveUserCredsAsCredentialList(emailBody.Email)
+	if len(credentialList) == 0 {
+		JSONResponse(w, "No credentials found", http.StatusNotFound)
+		return
+	}
+	JSONResponse(w, credentialList, http.StatusOK)
+}
+
+// handle the deletion of a credential
+func DeleteUserCredential(w http.ResponseWriter, r *http.Request) {
+	db := database.InitDB()
+
+	// read the JSON body
+	type DeleteCredentialBody struct {
+		CredentialID string `json:"credentialId"`
+	}
+	var deleteCredentialBody DeleteCredentialBody
+	err := json.NewDecoder(r.Body).Decode(&deleteCredentialBody)
+	if err != nil {
+		//http.Error(w, "Error reading request body, verifying the cred Id", http.StatusInternalServerError)
+		fmt.Println("Error reading request body, verifying the cred Id : ", err)
+		JSONResponse(w, "Error reading request body, verifying the cred Id : ", http.StatusInternalServerError)
+
+		return
+	}
+
+	// Find and delete the credential
+	var credential database.UserPasskey
+
+	if err := db.Where("credential_id = ?", deleteCredentialBody.CredentialID).First(&credential).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			//http.Error(w, "Credential not found", http.StatusNotFound)
+			JSONResponse(w, "Credential not found", http.StatusNotFound)
+		} else {
+			//http.Error(w, "Failed to retrieve credential", http.StatusInternalServerError)
+			JSONResponse(w, "Failed to retrieve credential", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if err := db.Delete(&credential).Error; err != nil {
+		//http.Error(w, "Failed to delete credential", http.StatusInternalServerError)
+		JSONResponse(w, "Failed to delete credential", http.StatusInternalServerError)
+		return
+	}
+
+	// Respond with success
+	JSONResponse(w, "Credential deleted successfully", http.StatusOK)
 
 }

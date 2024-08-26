@@ -70,7 +70,7 @@ func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 		//Credentials: retrieveUserCredentials(email), // No more need to do it here, it's done in the BeginRegistration function
 	}
 
-	options, session, err := webAuthn.BeginRegistration(passkeyUser, webauthn.WithExclusions(retrieveUserCredsAsDescriptor(emailBody.Email)))
+	options, session, err := webAuthn.BeginRegistration(passkeyUser, webauthn.WithExclusions(retrieveUserCredsAsCredDescriptorList(emailBody.Email)))
 
 	if err != nil {
 		fmt.Println(err)
@@ -84,7 +84,7 @@ func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	var tempRegData = []string{emailBody.Email, string(session.Challenge)}
 	tempRegDataSerialized, err := json.Marshal(tempRegData)
 	if err != nil {
-		log.Fatalf("could not marshal data: %v", err)
+		log.Println("could not marshal data: %v", err)
 		JSONResponse(w, "An error occured", http.StatusInternalServerError)
 		return
 	}

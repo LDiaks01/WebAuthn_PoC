@@ -1,0 +1,14 @@
+[
+    {
+      "relation": [
+        "delegate_permission/common.handle_all_urls"
+      ],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.example.flutter_passkey_test",
+        "sha256_cert_fingerprints": [
+          "16:4B:E4:9C:98:73:CF:03:6A:67:15:0C:AE:88:B4:94:D3:4A:71:A2:58:BF:26:FB:B8:5F:13:02:76:73:DC:8C"
+        ]
+      }
+    }
+  ]

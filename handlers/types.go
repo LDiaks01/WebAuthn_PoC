@@ -25,9 +25,10 @@ type MobileUserEntity struct {
 	ID          interface{} `json:"id"`
 }
 
-type PasskeyEntry struct {
+type PrettyPasskeyEntry struct {
 	CredentialID string `json:"CredentialID"`
 	CreatedAt    string `json:"CreatedAt"`
+	LastAuthenticatedAt string `json:"LastAuthenticatedAt"`
 	ImageDark    string `json:"ImageDark"`
 	ImageLight   string `json:"ImageLight"`
 	AAGUID       string `json:"AAGUID"`
@@ -60,14 +61,12 @@ type FinishMobileRegistrationData struct {
 	HashCode          string `json:"hashCode"`
 }
 
-
 type MediationType string
 
 // Définir les constantes pour les types de médiation
 const (
-    MediationSilent      MediationType = "silent"
-    MediationPreferred   MediationType = "preferred"
-    MediationConditional MediationType = "conditional"
-    MediationOptional    MediationType = "optional"
+	MediationSilent      MediationType = "silent"
+	MediationPreferred   MediationType = "preferred"
+	MediationConditional MediationType = "conditional"
+	MediationOptional    MediationType = "optional"
 )
-

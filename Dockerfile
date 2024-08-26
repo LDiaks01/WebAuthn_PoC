@@ -27,6 +27,9 @@ FROM alpine:latest
 # Copier le binaire de l'étape de construction
 COPY --from=build /app/go_server /go_server
 
+# Copier les fichiers sources
+COPY --from=build /app/*.json /
+
 # Exposer le port sur lequel l'application écoutera
 EXPOSE 8080
 

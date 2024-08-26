@@ -1,18 +1,13 @@
 package handlers
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
-	"github.com/LDiaks01/WebAuthn_PoC/database"
-
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"gorm.io/gorm"
 )
 
 var wconfig = &webauthn.Config{
@@ -62,42 +57,4 @@ func JSONResponse(w http.ResponseWriter, data interface{}, status int) {
 
 	w.WriteHeader(status)
 	fmt.Fprintf(w, "%s", dj)
-}
-
-// handle the deletion of a credential
-func DeleteCredentialHandler(w http.ResponseWriter, r *http.Request) {
-	db := database.InitDB()
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
-		return
-	}
-
-	credentialId := string(body)
-
-	// Find and delete the credential
-	var credential database.UserPasskey
-	bytes_cred, err := base64.RawStdEncoding.DecodeString(credentialId)
-	if err != nil {
-		http.Error(w, "Failed to decode credential ID", http.StatusInternalServerError)
-		return
-	}
-
-	if err := db.Where("credential_id = ?", bytes_cred).First(&credential).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "Credential not found", http.StatusNotFound)
-		} else {
-			http.Error(w, "Failed to retrieve credential", http.StatusInternalServerError)
-		}
-		return
-	}
-
-	if err := db.Delete(&credential).Error; err != nil {
-		http.Error(w, "Failed to delete credential", http.StatusInternalServerError)
-		return
-	}
-
-	// Respond with success
-	JSONResponse(w, "Credential deleted successfully", http.StatusOK)
-
 }
