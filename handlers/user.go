@@ -47,7 +47,3 @@ func (u DefaultUser) WebAuthnIcon() string {
 func (u DefaultUser) WebAuthnCredentials() []webauthn.Credential {
 	return u.Credentials
 }
-
-func (u DefaultUser) AddCredential(cred webauthn.Credential) {
-	u.Credentials = append(u.Credentials, cred)
-}

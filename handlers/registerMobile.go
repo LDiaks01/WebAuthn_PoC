@@ -84,7 +84,7 @@ func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 	var tempRegData = []string{emailBody.Email, string(session.Challenge)}
 	tempRegDataSerialized, err := json.Marshal(tempRegData)
 	if err != nil {
-		log.Println("could not marshal data: %v", err)
+		log.Println("could not marshal data: ", err)
 		JSONResponse(w, "An error occured", http.StatusInternalServerError)
 		return
 	}
