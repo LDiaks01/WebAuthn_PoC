@@ -246,3 +246,66 @@ func GenerateUUID() string {
 	id := uuid.New()
 	return id.String()
 }
+
+func GetUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	db := database.InitDB()
+	fmt.Println("email:", email)
+
+	// retrieve the user from the database
+	var userFromUsers database.User
+	if db.Where("email = ?", email).First(&userFromUsers).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+	// retrieve the user passkeys from the database
+	var userPasskeys []database.UserPasskey
+	if db.Where("user_id = ?", email).Find(&userPasskeys).Error != nil {
+		fmt.Print("User not found")
+		return
+	}
+
+	type PasskeyEntry struct {
+		CredentialID string `json:"CredentialID"`
+		CreatedAt    string `json:"CreatedAt"`
+		ImageDark    string `json:"ImageDark"`
+		ImageLight   string `json:"ImageLight"`
+		AAGUID       string `json:"AAGUID"`
+		Description  string `json:"Description"`
+		VerMethod    string `json:"VerificationMethod"`
+	}
+
+	var aaguidSchema database.AAGUIDSchema
+	aaguidSchema.Items = database.AAGUIDJsonLoader()
+	if aaguidSchema.Items == nil {
+		fmt.Println("Error loading AAGUID schema")
+		return
+	}
+	fmt.Println("AAGUID schema loaded")
+	var passkeyEntries []PasskeyEntry
+	var passkeyEntry PasskeyEntry
+	for _, passkey := range userPasskeys {
+		aaguidItem := database.RetrieveAAGUIDInfo(formatAAGUID(passkey.AAGUID), aaguidSchema)
+		//test if empty
+		if (aaguidItem == database.AAGUIDItem{}) {
+			passkeyEntry.Description = "Unknown"
+			passkeyEntry.ImageDark = "Unknown"
+			passkeyEntry.ImageLight = "Unknown"
+			fmt.Println("AAGUID not found in schema")
+		} else {
+			passkeyEntry.Description = aaguidItem.Name
+			passkeyEntry.ImageDark = aaguidItem.IconDark
+			passkeyEntry.ImageLight = aaguidItem.IconLight
+		}
+		//passkeyEntry.CredentialID = base64.RawStdEncoding.EncodeToString(passkey.CredentialID)
+		passkeyEntry.AAGUID = formatAAGUID(passkey.AAGUID)
+		passkeyEntry.VerMethod = "FIDO2"
+		passkeyEntry.CreatedAt = passkey.CreatedAt.Format(time.RFC3339)
+
+		passkeyEntries = append(passkeyEntries, passkeyEntry)
+
+	}
+	fmt.Println("Passkey entries:", passkeyEntries)
+
+	JSONResponse(w, passkeyEntries, http.StatusOK)
+}

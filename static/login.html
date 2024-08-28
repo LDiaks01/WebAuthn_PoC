@@ -56,7 +56,7 @@
 <body>
     <div class="container">
         <h2>Login Form</h2>
-        <form action="/postLogin" method="POST">
+        <form method="POST" id="loginForm">
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required>
             <label for="password">Password:</label>
@@ -74,6 +74,33 @@
         // Accéder aux valeurs des paramètres
         var email = queryParams.get("email");
         var username = queryParams.get("username");
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Empêche la soumission normale du formulaire
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            fetch('/postlogin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Rediriger vers la page d'accueil si succès
+                    window.location.href = '/home'+ '?email=' + encodeURIComponent(data.email) + '&username=' + encodeURIComponent(data.username);
+                } else {
+                    // Gérer l'échec de l'authentification
+                    alert('Authentication failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
             // check whether current browser supports WebAuthn
@@ -106,7 +133,13 @@
             return;
             }
 
-            fetch('/beginLogin?email=' + email)
+            fetch('/beginmobilelogin',{
+                    method: 'POST', // Use POST method
+                    headers: {
+                        'Content-Type': 'application/json' // Set the content type to JSON
+                    },
+                    body: JSON.stringify({ email }) // Convert the data to JSON string
+                })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok ' + response.statusText);
@@ -115,13 +148,13 @@
                 })
                 .then(credentialRequestOptions => {
                     console.log("Request for login: /beginLogin", credentialRequestOptions);
-                    credentialRequestOptions.publicKey.challenge = base64url_decode(credentialRequestOptions.publicKey.challenge);
-                    credentialRequestOptions.publicKey.allowCredentials.forEach(listItem => {
+                    credentialRequestOptions.challenge = base64url_decode(credentialRequestOptions.challenge);
+                    credentialRequestOptions.allowCredentials.forEach(listItem => {
                         listItem.id = base64url_decode(listItem.id);
                     });
 
                     return navigator.credentials.get({
-                        publicKey: credentialRequestOptions.publicKey
+                        publicKey: credentialRequestOptions
                     });
                 })
                 .then(assertion => {
@@ -132,11 +165,12 @@
                     let sig = assertion.response.signature;
                     let userHandle = assertion.response.userHandle;
 
-                    return fetch('/finishLogin?email='+email, {
+                    return fetch('/finishmobilelogin', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
+                        credentials: 'include',
                         body: JSON.stringify({
                             id: assertion.id,
                             rawId: base64url_encode(rawId),

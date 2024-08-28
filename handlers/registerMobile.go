@@ -70,6 +70,8 @@ func BeginMobileRegistration(w http.ResponseWriter, r *http.Request) {
 		//Credentials: retrieveUserCredentials(email), // No more need to do it here, it's done in the BeginRegistration function
 	}
 
+	fmt.Println("passkeyUser:", passkeyUser.DisplayName)
+
 	options, session, err := webAuthn.BeginRegistration(passkeyUser, webauthn.WithExclusions(retrieveUserCredsAsCredDescriptorList(emailBody.Email)))
 
 	if err != nil {

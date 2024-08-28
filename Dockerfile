@@ -28,6 +28,7 @@ FROM alpine:latest
 COPY --from=build /app/go_server /go_server
 
 # Copier les fichiers sources
+COPY --from=build /app/static/ /static
 COPY --from=build /app/*.json /
 
 # Exposer le port sur lequel l'application écoutera

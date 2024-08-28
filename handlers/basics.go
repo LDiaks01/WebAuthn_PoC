@@ -64,30 +64,72 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-	hashStr := hashPassword(password)
+	w.Header().Set("Content-Type", "application/json")
+	type LoginUserBody struct {
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	var userBody LoginUserBody
+	err := json.NewDecoder(r.Body).Decode(&userBody)
+	if err != nil {
+		//http.Error(w, "Error decoding JSON content, verify the JSON Format"+err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		//http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "check the JSON format",
+			"status":  "incorrect",
+		})
+		return
+	}
+
+	if userBody.Email == "" || userBody.Password == "" {
+		//http.Error(w, "Error decoding JSON content, verify the JSON Format"+err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		//http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "check the JSON format",
+			"status":  "incorrect",
+		})
+		return
+	}
+
+	hashStr := hashPassword(userBody.Password)
 	db := database.InitDB()
 	var user database.User
-	result := db.Where("email = ? AND password = ?", email, hashStr).First(&user)
+	fmt.Println("Email:", userBody.Email)
+	result := db.Where("email = ? AND password = ?", userBody.Email, hashStr).First(&user)
 	if result.Error != nil {
 		fmt.Println("Erreur lors de la recherche de l'utilisateur:", result.Error)
+		w.WriteHeader(http.StatusBadRequest)
+		//http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "user/password incorrect",
+			"status":  "incorrect",
+		})
 		return
 	}
 	if user.ID == 0 {
-		fmt.Println("Utilisateur non trouvé")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		w.WriteHeader(http.StatusBadRequest)
+		//http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "user/password incorrect",
+			"status":  "incorrect",
+		})
 		return
 	}
+
 	fmt.Println("Utilisateur trouvé: ", user.Email)
 
 	// return a http response with a cookie
 	// http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	//http.Redirect(w, r, "/home?email="+user.Email+"&username="+user.Username, http.StatusSeeOther)
 	json.NewEncoder(w).Encode(map[string]string{
-		"token":  "SampleToken1234",
-		"status": "success",
+		"message":  "Login success, nice buddy",
+		"status":   "success",
+		"email":    user.Email,
+		"username": user.Username,
 	})
 
 }

@@ -126,9 +126,10 @@
 
 
     <script>
+        
         document.addEventListener('DOMContentLoaded', function() {
             const email = "{{ .Email }}";
-            fetch(`/getUserCredentials?email=${email}`)
+            fetch(`/getusercredentials?email=${email}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok ' + response.statusText);
@@ -155,12 +156,14 @@
                 .catch(error => {
                     console.error('Error:', error);
                 });
+                
         });
 
         var queryParams = new URLSearchParams(window.location.search);
         // Accéder aux valeurs des paramètres
         var email = queryParams.get("email");
         var username = queryParams.get("username");
+        
 
         document.addEventListener('DOMContentLoaded', function () {
             // check whether current browser supports WebAuthn
@@ -198,6 +201,13 @@
                     },
                     body: JSON.stringify({ email }) // Convert the data to JSON string
                 })
+                .then(response => {
+                    console.log(response);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
                 .then(credentialCreationOptions => {
                     // Convertir les valeurs encodées en base64url en ArrayBuffer
                     credentialCreationOptions.publicKey.challenge = base64url_decode(credentialCreationOptions.publicKey.challenge);
@@ -212,6 +222,24 @@
                     });
                 })
                 .then(credential => {
+                    const cookies = document.cookie.split(';');
+                    let regDataKey = null;
+
+                    // Iterate over cookies to find the one you're interested in
+                    cookies.forEach(cookie => {
+                        const [name, value] = cookie.trim().split('=');
+                        if (name === 'regDataKey') {
+                            regDataKey = value;
+                        }
+                    });
+
+                    if (regDataKey) {
+                        console.log('regDataKey:', regDataKey);
+                        // You can now use regDataKey in your application
+                    } else {
+                        console.log('regDataKey cookie not found');
+                    }
+
                     let attestationObject = credential.response.attestationObject;
                     let clientDataJSON = credential.response.clientDataJSON;
                     let rawId = credential.rawId;
@@ -223,13 +251,15 @@
                             attestationObject: base64url_encode(attestationObject),
                             clientDataJSON: base64url_encode(clientDataJSON),
                         },
+                        authenticatorAttachment: "platform",
                     };
                     //alert("rawID: " + base64url_encode(rawId) + "credential.id: " + credential.id);
-                    return fetch('/finish?email=' + email, {
+                    return fetch('/finishmobileregister', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
+                        credentials: 'include',
                         body: JSON.stringify(requestData)
                     });
                 })
