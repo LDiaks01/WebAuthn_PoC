@@ -129,7 +129,15 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             const email = "{{ .Email }}";
-            fetch(`/getusercredentials?email=${email}`)
+            fetch("/getprettycredentials", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email })
+            }
+                
+            )
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok ' + response.statusText);
@@ -145,6 +153,7 @@
                             <p>AAGUID: ${credential.AAGUID}</p>
                             <p>Description: ${credential.Description}</p>
                             <p>CreatedAt: ${credential.CreatedAt}</p>
+                            <p>Last Used: ${credential.LastAuthenticatedAt}</p>
                             <p>Verif Method: ${credential.VerificationMethod}</p>
                             <img src="${credential.ImageLight}" alt="Image light ">
                            <!-- <img src="${credential.ImageDark}" alt="Image dark "> -->
@@ -281,12 +290,12 @@
         }
 
         function deleteCredential(credentialID) {
-            fetch('/deleteCredential', {
+            fetch('/deletecredential', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: credentialID
+                body: JSON.stringify({ credentialID })
             })
             .then(response => {
                 if (!response.ok) {

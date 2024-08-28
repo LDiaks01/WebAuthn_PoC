@@ -25,7 +25,6 @@ func main() {
 	http.HandleFunc("/getcredentials", handlers.GetUserCredentials)
 	http.HandleFunc("/getprettycredentials", handlers.GetPrettyUserCredentials)
 	http.HandleFunc("/deletecredential", handlers.DeleteUserCredential)
-	http.HandleFunc("/getusercredentials", handlers.GetUserCredentialsHandler)
 	http.ListenAndServe(":8080", nil)
 }
 

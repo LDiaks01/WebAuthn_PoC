@@ -26,14 +26,14 @@ type MobileUserEntity struct {
 }
 
 type PrettyPasskeyEntry struct {
-	CredentialID string `json:"CredentialID"`
-	CreatedAt    string `json:"CreatedAt"`
+	CredentialID        string `json:"CredentialID"`
+	CreatedAt           string `json:"CreatedAt"`
+	ImageDark           string `json:"ImageDark"`
+	ImageLight          string `json:"ImageLight"`
+	AAGUID              string `json:"AAGUID"`
+	Description         string `json:"Description"`
+	VerMethod           string `json:"VerificationMethod"`
 	LastAuthenticatedAt string `json:"LastAuthenticatedAt"`
-	ImageDark    string `json:"ImageDark"`
-	ImageLight   string `json:"ImageLight"`
-	AAGUID       string `json:"AAGUID"`
-	Description  string `json:"Description"`
-	VerMethod    string `json:"VerificationMethod"`
 }
 
 type GetAssertionOptions struct {
@@ -70,3 +70,12 @@ const (
 	MediationConditional MediationType = "conditional"
 	MediationOptional    MediationType = "optional"
 )
+
+var Transports = []protocol.AuthenticatorTransport{
+
+	protocol.AuthenticatorTransport("usb"),
+	protocol.AuthenticatorTransport("nfc"),
+	protocol.AuthenticatorTransport("ble"),
+	protocol.AuthenticatorTransport("internal"),
+	protocol.AuthenticatorTransport("hybrid"),
+}
