@@ -193,7 +193,7 @@ func FinishMobileLogin(w http.ResponseWriter, r *http.Request) {
 		SignCount:           credentialFromDB.SignCount + 1,
 		LastAuthenticatedAt: time.Now(),
 	}
-	if err := db.Model(&database.UserPasskey{}).Where("id = ?", credentialFromDB.CredentialID).Updates(updateFields).Error; err != nil {
+	if err := db.Model(&database.UserPasskey{}).Where("credential_id = ?", credentialFromDB.CredentialID).Updates(updateFields).Error; err != nil {
 		fmt.Println("Error updating the sign count:", err)
 		JSONResponse(w, "Error updating the sign count, an internal issue occured", http.StatusInternalServerError)
 		return

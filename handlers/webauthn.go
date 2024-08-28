@@ -17,7 +17,7 @@ var wconfig = &webauthn.Config{
 		"https://passkey.hata.io/", "http://passkey.hata.io", "http://passkey.hata.io/",
 		"android:apk-key-hash:LNbiYblBNnGCy6kYW99g8ZDt0zgV2Em8igUYBd77QrE=",
 		"android:apk-key-hash:LNbiYblBNnGCy6kYW99g8ZDt0zgV2Em8igUYBd77QrE"}, // The origin URLs allowed for WebAuthn requests
-	AttestationPreference: protocol.PreferIndirectAttestation,
+	AttestationPreference: protocol.PreferDirectAttestation,
 	// Timeout values for the registration and authentication processes
 	Timeouts: webauthn.TimeoutsConfig{
 		Login: webauthn.TimeoutConfig{
@@ -38,6 +38,7 @@ var wconfig = &webauthn.Config{
 		UserVerification:        protocol.VerificationRequired,
 		ResidentKey:             protocol.ResidentKeyRequirement("required"),
 	},
+
 	//the direct and indirect way give a good aaguid
 
 }

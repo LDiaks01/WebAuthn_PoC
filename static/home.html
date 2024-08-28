@@ -191,12 +191,12 @@
                 alert("Go back to login page and enter a username and email");
                 return;
             }
-            fetch('/registerPIN?email=' + email)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok ' + response.statusText);
-                    }
-                    return response.json();
+            fetch('/beginmobileregister', {
+                    method: 'POST', // Use POST method
+                    headers: {
+                        'Content-Type': 'application/json' // Set the content type to JSON
+                    },
+                    body: JSON.stringify({ email }) // Convert the data to JSON string
                 })
                 .then(credentialCreationOptions => {
                     // Convertir les valeurs encodées en base64url en ArrayBuffer

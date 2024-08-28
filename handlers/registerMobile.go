@@ -180,13 +180,22 @@ func FinishMobileRegistration(w http.ResponseWriter, r *http.Request) {
 
 	//print the user ID base64url
 	fmt.Println("User ID:", base64.URLEncoding.EncodeToString(regUser.ID))
+	// create a new list of transports
+	transports := []protocol.AuthenticatorTransport{
+
+		protocol.AuthenticatorTransport("usb"),
+		protocol.AuthenticatorTransport("nfc"),
+		protocol.AuthenticatorTransport("ble"),
+		protocol.AuthenticatorTransport("internal"),
+		protocol.AuthenticatorTransport("hybrid"),
+	}
 
 	newPassKeyEntry := database.UserPasskey{
 		UserID:              registrationEmail,
 		PublicKey:           base64.URLEncoding.EncodeToString(c.PublicKey),
 		CredentialID:        base64.URLEncoding.EncodeToString(c.ID),
 		AttestationType:     c.AttestationType,
-		Transport:           joinTransports(c.Transport),
+		Transport:           joinTransports(transports),
 		UserPresent:         c.Flags.UserPresent,
 		UserVerified:        c.Flags.UserVerified,
 		BackupEligible:      c.Flags.BackupEligible,
